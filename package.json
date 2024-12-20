@@ -1,5 +1,5 @@
 {
-  "name": "react-native-encryption",
+  "name": "rn-encryption",
   "version": "0.1.0",
   "description": "Encryption",
   "source": "./src/index.tsx",
