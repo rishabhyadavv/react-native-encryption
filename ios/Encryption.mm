@@ -5,12 +5,6 @@
 @implementation Encryption
 RCT_EXPORT_MODULE()
 
-- (NSNumber *)multiply:(double)a b:(double)b {
-    NSNumber *result = @(a * b);
-
-    return result;
-}
-
 // Method to encrypt data
 - (NSString *)encrypt:(NSString *)data key:(NSString *)key {
     NSError *error = nil;

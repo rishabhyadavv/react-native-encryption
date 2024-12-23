@@ -5,20 +5,35 @@ Encryption
 ## Installation
 
 ```sh
-npm install react-native-encryption
+npm install rn-encryption
+yarn add rn-encryption
 ```
 
 ## Usage
 
 
 ```js
-import { multiply } from 'react-native-encryption';
+import {encrypt, decrypt} from "rn-encryption"
 
 // ...
+const encryptionKey = "1234567890123456";
 
-const result = multiply(3, 7);
+  const handleEncryption = async () => {
+   
+    try {
+      const encrypted = await encrypt("sometexthere", encryptionKey);
+
+      const decrypted = await decrypt(encrypted, encryptionKey);
+
+      console.log(`Encrypted: ${encrypted}\nDecrypted: ${decrypted}`);
+    } catch (err) {
+       console.log('An error occurred during encryption/decryption.');
+    }
+  };
 ```
 
+## I have just started to working on this repo
+#I am creating encryption on native side i.e kotlin and objective-C using the turbo modules
 
 ## Contributing
 
