@@ -1,12 +1,17 @@
 import Encryption from './NativeEncryption';
-
+interface keypair {
+  publicKey: string;
+  privateKey: string;
+}
+export function generateAESKey(input: number): string {
+  return Encryption.generateAESKey(input);
+}
 export function encryptAES(data: string, key: string): string {
   return Encryption.encryptAES(data, key);
 }
 export function decryptAES(data: string, key: string): string {
   return Encryption.decryptAES(data, key);
 }
-
 export function encryptRSA(data: string, key: string): string {
   return Encryption.encryptRSA(data, key);
 }
@@ -30,4 +35,24 @@ export function base64Decode(input: string): string {
 }
 export function generateRandomString(input: number): string {
   return Encryption.generateRandomString(input);
+}
+
+export function generateRSAKeyPair(): keypair {
+  return Encryption.generateRSAKeyPair();
+}
+
+export function generateECDSAKeyPair(): keypair {
+  return Encryption.generateECDSAKeyPair();
+}
+
+export function signDataECDSA(data: string, key: string): string {
+  return Encryption.signDataECDSA(data, key);
+}
+
+export function verifySignatureECDSA(
+  data: string,
+  signatureBase64: string,
+  key: string
+): boolean {
+  return Encryption.verifySignatureECDSA(data, signatureBase64, key);
 }

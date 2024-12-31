@@ -7,14 +7,15 @@ This guide explains how to directly access methods from the `rn-encryption` libr
 ## 📑 **Table of Contents**
 
 1. [Library Installation](#1-library-installation)
-2. [New Architecture required](#2-new_arch_needed)  
+2. [Requirements](#2-new_arch_needed)  
 3. [Setup in React Native](#3-setup-in-react-native)  
 4. [Direct Method Import](#4-direct-method-import)  
 5. [API Overview](#5-api-overview)  
 6. [Usage Examples](#6-usage-examples)  
 7. [Troubleshooting](#7-troubleshooting)  
 8. [Best Practices](#8-best-practices)  
-9. [FAQ](#9-faq)  
+9. [FAQ](#9-faq)
+10. [Security Best Practices](#security-best-practices)
 
 ---
 
@@ -29,9 +30,6 @@ npm install rn-encryption --save
 # OR
 yarn add rn-encryption
 ```
-### #2-new_arch_needed
-
-New architecture required. React native >= 0.76.5 Works with Expo **Bare Workflow** & **Vanilla React Native**
 
 ### 1.2 **Rebuild the Project**
 
@@ -48,14 +46,20 @@ npx react-native run-ios
 ```
 
 ---
+## **2.Requirements**
+  ### 2.1 **New Architecture required**
+  New architecture required. React native >= 0.76.5 Works with Expo **Bare Workflow** & **Vanilla React Native**
+  ### 2.2 **iOS: Cryptokit from swift is being used for encryption. Minimin support iOS version is 13.0**
 
-## ⚙️ **2. Setup in React Native**
+---
+
+## ⚙️ **3. Setup in React Native**
 
 No additional configuration is required. The methods can be **directly imported** and used.
 
 ---
 
-## 📦 **3. Direct Method Import**
+## 📦 **4. Direct Method Import**
 
 You can directly import the methods you need:
 
@@ -78,7 +82,7 @@ Each method can be accessed directly without a default object wrapper.
 
 ---
 
-## 📚 **4. API Overview**
+## 📚 **5. API Overview**
 
 ### 🔒 **AES Encryption/Decryption**
 - **`encryptAES(data: string, key: string): string`**  
@@ -104,9 +108,9 @@ Each method can be accessed directly without a default object wrapper.
 
 ---
 
-## 🛠️ **5. Usage Examples**
+## 🛠️ **6. Usage Examples**
 
-### 🔒 **5.1 AES Encryption and Decryption**
+### 🔒 **6.1 AES Encryption and Decryption**
 
 ```tsx
 import { encryptAES, decryptAES } from 'rn-encryption';
@@ -131,7 +135,7 @@ runAESExample();
 
 ---
 
-### 🔑 **5.2 RSA Encryption and Decryption**
+### 🔑 **6.2 RSA Encryption and Decryption**
 
 ```tsx
 import { encryptRSA, decryptRSA } from 'rn-encryption';
@@ -157,7 +161,7 @@ runRSAExample();
 
 ---
 
-### 🛡️ **5.3 SHA Hashing**
+### 🛡️ **6.3 SHA Hashing**
 
 ```tsx
 import { hashSHA256, hashSHA512 } from 'rn-encryption';
@@ -177,7 +181,7 @@ runHashExample();
 
 ---
 
-### 📝 **5.4 HMAC-SHA256**
+### 📝 **6.4 HMAC-SHA256**
 
 ```tsx
 import { hmacSHA256 } from 'rn-encryption';
@@ -195,7 +199,7 @@ runHMACExample();
 
 ---
 
-### 🎲 **5.5 Random String Generation**
+### 🎲 **6.5 Random String Generation**
 
 ```tsx
 import { generateRandomString } from 'rn-encryption';
@@ -210,7 +214,7 @@ runRandomStringExample();
 
 ---
 
-### 📝 **5.6 Base64 Encoding/Decoding**
+### 📝 **6.6 Base64 Encoding/Decoding**
 
 ```tsx
 import { base64Encode, base64Decode } from 'rn-encryption';
@@ -230,7 +234,7 @@ runBase64Example();
 
 ---
 
-## 🐞 **6. Troubleshooting**
+## 🐞 **7. Troubleshooting**
 
 1. **Library Not Found:**  
    - Run `npx react-native link rn-encryption`.
@@ -247,7 +251,7 @@ runBase64Example();
 
 ---
 
-## ✅ **7. Best Practices**
+## ✅ **8. Best Practices**
 
 1. **Do Not Hardcode Keys:** Use `.env` or secure storage for keys.
 2. **Handle Errors Gracefully:** Wrap calls in `try-catch` blocks.
@@ -255,7 +259,7 @@ runBase64Example();
 
 ---
 
-## ❓ **8. FAQ**
+## ❓ **9. FAQ**
 
 **Q: Does the library support both Android and iOS?**  
 A: Partially, `rn-encryption` fully supports ios and encryptAES & decryptAES for Android platforms.
@@ -268,7 +272,27 @@ A: Add console logs and verify that keys and data are correctly passed.
 
 ---
 
-##  **9. Conclusion**
+##  **10. Security Best Practices**
 
-With **`rn-encryption`**, you can securely handle encryption, hashing, and cryptographic operations in your React Native app. Use the examples above to integrate and test various functionalities.
+1. Use Strong Keys: Always use AES-256 for symmetric encryption and RSA-2048 for asymmetric encryption.
+2. Key Storage: Store keys securely using Android Keystore and iOS Keychain.
+3. Avoid Hardcoding Keys: Do not hardcode encryption keys directly in the app.
+
+### 📚 **Encryption Mechanisms: Android (JCA) vs iOS (CryptoKit)**
+
+| **Feature**                    | **Android (JCA)**                   | **iOS (CryptoKit)**              |
+|--------------------------------|-------------------------------------|----------------------------------|
+| **Symmetric Encryption**       | ✅ AES-256-GCM                      | ✅ AES-256-GCM                   |
+| **Asymmetric Encryption**      | ✅ RSA-2048                         | ✅ RSA-2048                      |
+| **Key Derivation**             | ✅ PBKDF2                           | ✅ PBKDF2 / ✅ HKDF              |
+| **Hashing**                    | ✅ SHA-256, ✅ SHA-512              | ✅ SHA-256, ✅ SHA-512           |
+| **Message Authentication**     | ✅ HMAC-SHA256                      | ✅ HMAC-SHA256                   |
+| **Digital Signatures**         | ✅ ECDSA                            | ✅ ECDSA (via CryptoKit)         |
+| **Key Management**             | ✅ Android Keystore                 | ✅ iOS Keychain                  |
+| **Initialization Vector (IV)** | ✅ SecureRandom (12/16 Bytes)       | ✅ Randomized IV (12 Bytes)      |
+| **Authentication Tag**         | ✅ Built-in (GCM Mode)              | ✅ Built-in (GCM Mode)           |
+| **Error Handling**             | ✅ Strong Validation                | ✅ Strong Validation             |
+| **Performance**                | ⚡ Optimized for Android             | ⚡ Optimized for iOS              |
+| **Parallel Processing**        | ✅ Supported in GCM                 | ✅ Supported in GCM              |
+| **Cryptographic Library**      | ✅ Java Cryptography (JCA)          | ✅ CryptoKit                     |
 

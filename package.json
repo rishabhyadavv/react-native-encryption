@@ -5,6 +5,11 @@
   "source": "./src/index.tsx",
   "main": "./lib/commonjs/index.js",
   "module": "./lib/module/index.js",
+  "expo": {
+    "plugins": [
+      "./app.plugin.js"
+    ]
+  },
   "exports": {
     ".": {
       "import": {
