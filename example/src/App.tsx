@@ -26,27 +26,18 @@ export default function DashboardScreen() {
 
   async function handleRSAEncryption() {
     const plaintext = 'Hello, RSA Encryption!';
-
-    // Base64-encoded RSA Keys (as strings)
-
     const generatedKeys = generateRSAKeyPair();
-    //console.log("RSA key pair", generatedKeys)
-
     try {
       // Step 1: Encrypt the plaintext using the Public Key
       const encryptedData = await encryptRSA(
         plaintext,
         generatedKeys.publicKey
       );
-      console.log('🔐 Encrypted Data (Base64):', encryptedData);
-
       // Step 2: Decrypt the encrypted data using the Private Key
       const decryptedData = await decryptRSA(
         encryptedData,
         generatedKeys.privateKey
       );
-      console.log('🔓 Decrypted Data:', decryptedData);
-
       // Step 3: Validation
       if (decryptedData === plaintext) {
         console.log('✅ RSA Encryption and Decryption Successful!');
@@ -66,7 +57,6 @@ export default function DashboardScreen() {
     };
     try {
       const generatedKey = generateAESKey(256);
-      console.log('generatedKey:', generatedKey);
       const jsonString = JSON.stringify(sampleObject);
       const encryptedString = encryptAES(jsonString, generatedKey);
 

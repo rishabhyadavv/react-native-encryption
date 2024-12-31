@@ -1,8 +1,5 @@
-import Encryption from './NativeEncryption';
-interface keypair {
-  publicKey: string;
-  privateKey: string;
-}
+import Encryption, { type keypair } from './NativeEncryption';
+
 export function generateAESKey(input: number): string {
   return Encryption.generateAESKey(input);
 }

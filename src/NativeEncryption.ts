@@ -1,11 +1,9 @@
 import type { TurboModule } from 'react-native';
 import { TurboModuleRegistry } from 'react-native';
-
-interface keypair {
+export interface keypair {
   publicKey: string;
   privateKey: string;
 }
-
 export interface Spec extends TurboModule {
   generateAESKey(keySize: number): string;
   encryptAES(data: string, key: string): string;
