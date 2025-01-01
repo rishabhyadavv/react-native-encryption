@@ -75,10 +75,19 @@ import {
   hashSHA256,
   hashSHA512,
   hmacSHA256,
-  generateRandomString,
   base64Encode,
   base64Decode,
-} from 'rn-encryption';
+  generateRandomString,
+  generateAESKey,
+  generateRSAKeyPair,
+  generateECDSAKeyPair,
+  signDataECDSA,
+  verifySignatureECDSA,
+  encryptAsyncAES,
+  decryptAsyncAES,
+  encryptAsyncRSA,
+  decryptAsyncRSA
+} from 'rn-encryption';;
 ```
 
 Each method can be accessed directly without a default object wrapper.
