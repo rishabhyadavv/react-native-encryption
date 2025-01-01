@@ -261,7 +261,7 @@ RCT_EXPORT_MODULE()
     }
 }
 
-- (void)decryptRSA:(NSString *)data privateKey:(NSString *)privateKey resolve:(RCTPromiseResolveBlock)resolve
+- (void)decryptAsyncRSA:(NSString *)data privateKey:(NSString *)privateKey resolve:(RCTPromiseResolveBlock)resolve
             reject:(RCTPromiseRejectBlock)reject {
     
     __typeof(self) __weak weakSelf = self;

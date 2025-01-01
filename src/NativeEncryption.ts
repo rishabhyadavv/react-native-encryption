@@ -12,8 +12,8 @@ export interface Spec extends TurboModule {
   decryptAsyncAES(data: string, key: string): Promise<string>;
   encryptRSA(data: string, publicKey: string): string;
   decryptRSA(data: string, privateKey: string): string;
-  encryptAsyncRSA(data: string, key: string): Promise<string>;
-  decryptAsyncRSA(data: string, key: string): Promise<string>;
+  encryptAsyncRSA(data: string, publicKey: string): Promise<string>;
+  decryptAsyncRSA(data: string, privateKey: string): Promise<string>;
   hashSHA256(input: string): string;
   hashSHA512(input: string): string;
   hmacSHA256(data: string, key: string): string;
