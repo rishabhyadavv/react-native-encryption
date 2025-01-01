@@ -128,7 +128,7 @@ Each method can be accessed directly without a default object wrapper.
 ### 🔒 **Asynchronous Methods**
 - **`encryptAsyncAES(data: string, key: string): Promise<string>`**
 - **`decryptAsyncAES(data: string, key: string): Promise<string>`**
-- **` encryptAsyncRSA(data: string, key: string): Promise<string>`**
+- **`encryptAsyncRSA(data: string, key: string): Promise<string>`**
 - **`decryptAsyncRSA(data: string, key: string): Promise<string>`**
 ---
 
