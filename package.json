@@ -1,6 +1,6 @@
 {
   "name": "rn-encryption",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "description": "Encryption",
   "source": "./src/index.tsx",
   "main": "./lib/commonjs/index.js",
