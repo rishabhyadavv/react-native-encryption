@@ -4,6 +4,7 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.module.annotations.ReactModule
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.WritableMap
+import com.facebook.react.bridge.Promise
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.Cipher
@@ -19,10 +20,16 @@ import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import java.security.Signature
 import java.security.KeyFactory
+import kotlinx.coroutines.*
+import kotlin.coroutines.CoroutineContext
+import javax.crypto.spec.GCMParameterSpec
 
 @ReactModule(name = EncryptionModule.NAME)
 class EncryptionModule(reactContext: ReactApplicationContext):
     NativeEncryptionSpec(reactContext) {
+
+ // Define a Coroutine Scope for Background Execution
+    private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
         override fun getName(): String {
             return NAME
@@ -160,6 +167,98 @@ class EncryptionModule(reactContext: ReactApplicationContext):
             return String(cipher.doFinal(encryptedBytes), Charsets.UTF_8)
         }
 
+       /**
+     * Asynchronously Encrypts plaintext using AES encryption in GCM mode.
+     *
+     * @param data The plaintext to be encrypted.
+     * @param key The Base64-encoded AES key.
+     * @param promise React Native promise to return results or errors.
+     */
+     @Throws(IllegalArgumentException::class, Exception::class)
+     override fun encryptAsyncAES(data: String, key: String, promise: Promise) {
+        coroutineScope.launch {
+            try {
+                if (data.isEmpty() || key.isEmpty()) {
+                    throw IllegalArgumentException("Data or key cannot be empty.")
+                }
+
+                // Decode the AES key from Base64
+                val keyBytes = Base64.decode(key, Base64.DEFAULT)
+                if (keyBytes.size !in listOf(16, 24, 32)) {
+                    throw IllegalArgumentException("Invalid AES key size. Must be 16, 24, or 32 bytes (128, 192, or 256 bits).")
+                }
+
+                // Generate Initialization Vector (IV)
+                val iv = ByteArray(12)
+                SecureRandom().nextBytes(iv)
+                val ivSpec = GCMParameterSpec(128, iv)
+
+                // Initialize Cipher
+                val secretKey = SecretKeySpec(keyBytes, "AES")
+                val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+                cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec)
+
+                // Encrypt Data
+                val encryptedData = cipher.doFinal(data.toByteArray(Charsets.UTF_8))
+
+                // Combine IV and Encrypted Data
+                val combined = iv + encryptedData
+
+                // Return as Base64 String
+                val result = Base64.encodeToString(combined, Base64.DEFAULT)
+                promise.resolve(result)
+            } catch (e: Exception) {
+                promise.reject("ENCRYPTION_ERROR", e.localizedMessage)
+            }
+        }
+    }
+
+    /**
+     * Asynchronously Decrypts AES-encrypted data using GCM mode.
+     *
+     * @param data The Base64-encoded encrypted data (including IV).
+     * @param key The Base64-encoded AES key.
+     * @param promise React Native promise to return results or errors.
+     */
+    @Throws(IllegalArgumentException::class, Exception::class)
+    override fun decryptAsyncAES(data: String, key: String, promise: Promise) {
+        coroutineScope.launch {
+            try {
+                if (data.isEmpty() || key.isEmpty()) {
+                    throw IllegalArgumentException("Data or key cannot be empty.")
+                }
+
+                // Decode the AES key from Base64
+                val keyBytes = Base64.decode(key, Base64.DEFAULT)
+                if (keyBytes.size !in listOf(16, 24, 32)) {
+                    throw IllegalArgumentException("Invalid AES key size. Must be 16, 24, or 32 bytes (128, 192, or 256 bits).")
+                }
+
+                // Decode the encrypted data from Base64
+                val decodedData = Base64.decode(data, Base64.DEFAULT)
+                if (decodedData.size < 12) {
+                    throw IllegalArgumentException("Invalid encrypted data. Data too short to contain IV.")
+                }
+
+                val iv = decodedData.copyOfRange(0, 12)
+                val encryptedBytes = decodedData.copyOfRange(12, decodedData.size)
+                val ivSpec = GCMParameterSpec(128, iv)
+
+                // Initialize Cipher for AES decryption
+                val secretKey = SecretKeySpec(keyBytes, "AES")
+                val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+                cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec)
+
+                // Decrypt and return as String
+                val decryptedData = cipher.doFinal(encryptedBytes)
+                val result = String(decryptedData, Charsets.UTF_8)
+                promise.resolve(result)
+            } catch (e: Exception) {
+                promise.reject("DECRYPTION_ERROR", e.localizedMessage)
+            }
+        }
+    }
+
         // -----------------------------------------
         // 🔑 AES Key Generation
         // -----------------------------------------
@@ -255,6 +354,64 @@ class EncryptionModule(reactContext: ReactApplicationContext):
                 e.printStackTrace()
                 null
             }
+        }
+
+        /**
+         * Encrypts plaintext using RSA encryption.
+         *
+         * @param data The plaintext to be encrypted.
+         * @param publicKeyBase64 The Base64-encoded RSA public key.
+         * @return A Base64-encoded string with encrypted data.
+         * @throws IllegalArgumentException if data or key is invalid.
+         * @throws Exception if encryption fails.
+         */
+        @Throws(Exception::class)
+        override fun encryptAsyncRSA(data: String, publicKeyBase64: String,promise: Promise) {
+              coroutineScope.launch {
+                 try {
+                val keyFactory = KeyFactory.getInstance("RSA")
+                val publicKeyBytes = Base64.decode(publicKeyBase64, Base64.DEFAULT)
+                val publicKey = keyFactory.generatePublic(X509EncodedKeySpec(publicKeyBytes))
+
+                val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
+                cipher.init(Cipher.ENCRYPT_MODE, publicKey)
+
+                  val encryptedData = cipher.doFinal(data.toByteArray(Charsets.UTF_8))
+                  promise.resolve(Base64.encodeToString(encryptedData, Base64.DEFAULT))
+            } catch (e: Exception) {
+                 promise.reject("ENCRYPTION_ERROR", e.localizedMessage)
+            }
+         }
+        }
+
+        /**
+         * Decrypts RSA-encrypted data.
+         *
+         * @param data The Base64-encoded encrypted data (including IV).
+         * @param privateKeyBase64 The Base64-encoded RSA private key.
+         * @return The decrypted plaintext string.
+         * @throws IllegalArgumentException if data or key is invalid.
+         * @throws Exception if decryption fails.
+         */
+        @Throws(Exception::class)
+        override fun decryptAsyncRSA(data: String, privateKeyBase64: String,promise: Promise) {
+            coroutineScope.launch {
+                 try {
+                val keyFactory = KeyFactory.getInstance("RSA")
+                val privateKeyBytes = Base64.decode(privateKeyBase64, Base64.DEFAULT)
+                val privateKey = keyFactory.generatePrivate(PKCS8EncodedKeySpec(privateKeyBytes))
+
+                val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
+                cipher.init(Cipher.DECRYPT_MODE, privateKey)
+
+                val encryptedData = Base64.decode(data, Base64.DEFAULT)
+                
+                promise.resolve(String(cipher.doFinal(encryptedData), Charsets.UTF_8))
+
+            } catch (e: Exception) {
+                 promise.reject("DECRYPTION_ERROR", e.localizedMessage)
+            }
+          }
         }
 
         // -----------------------------------------

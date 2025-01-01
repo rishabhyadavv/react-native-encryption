@@ -242,6 +242,68 @@ public class CryptoUtility: NSObject {
                 return nil
             }
         }
+    
+    @objc public func generateRSAKeyPair(_ errorObj: NSErrorPointer) -> NSDictionary? {
+            do {
+                let keySize = 2048
+                
+                // Define Key Attributes
+                let attributes: [String: Any] = [
+                    kSecAttrKeyType as String: kSecAttrKeyTypeRSA,
+                    kSecAttrKeySizeInBits as String: keySize,
+                    kSecPrivateKeyAttrs as String: [
+                        kSecAttrIsPermanent as String: false
+                    ],
+                    kSecPublicKeyAttrs as String: [
+                        kSecAttrIsPermanent as String: false
+                    ]
+                ]
+                
+                // Generate Private Key
+                var error: Unmanaged<CFError>?
+                guard let privateKey = SecKeyCreateRandomKey(attributes as CFDictionary, &error) else {
+                    throw error?.takeRetainedValue() ?? EncryptionError.keyGenerationFailed
+                }
+                
+                // Extract Public Key
+                guard let publicKey = SecKeyCopyPublicKey(privateKey) else {
+                    throw EncryptionError.publicKeyExportFailed
+                }
+                
+                // Export Public Key
+                guard let publicKeyData = SecKeyCopyExternalRepresentation(publicKey, &error) as Data? else {
+                    throw error?.takeRetainedValue() ?? EncryptionError.publicKeyExportFailed
+                }
+                
+                // Export Private Key
+                guard let privateKeyData = SecKeyCopyExternalRepresentation(privateKey, &error) as Data? else {
+                    throw error?.takeRetainedValue() ?? EncryptionError.privateKeyExportFailed
+                }
+                
+                // Encode Keys as Base64
+                let publicKeyBase64 = publicKeyData.base64EncodedString()
+                let privateKeyBase64 = privateKeyData.base64EncodedString()
+                
+                return [
+                    "publicKey": publicKeyBase64,
+                    "privateKey": privateKeyBase64
+                ]
+                
+            }  catch let err as NSError {
+                if let errorPointer = errorObj {
+                    errorPointer.pointee = err
+                }
+                return nil
+            }
+            catch {
+                if let errorPointer = errorObj {
+                    errorPointer.pointee = NSError(domain: "com.example.encryption",
+                                                   code: -1,
+                                                   userInfo: [NSLocalizedDescriptionKey: "An unknown error occurred: \(error.localizedDescription)"])
+                }
+                return nil
+            }
+        }
         
         // MARK: - RSA Decryption
         

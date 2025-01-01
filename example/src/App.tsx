@@ -16,6 +16,10 @@ import {
   generateECDSAKeyPair,
   signDataECDSA,
   verifySignatureECDSA,
+  encryptAsyncAES,
+  decryptAsyncAES,
+  encryptAsyncRSA,
+  decryptAsyncRSA,
 } from 'rn-encryption';
 interface EncryptionError {
   name: string;
@@ -24,17 +28,36 @@ interface EncryptionError {
 export default function DashboardScreen() {
   const [result, setResult] = useState(''); // Encryption/Decryption result
 
-  async function handleRSAEncryption() {
+  function handleRSAEncryption() {
     const plaintext = 'Hello, RSA Encryption!';
     const generatedKeys = generateRSAKeyPair();
     try {
       // Step 1: Encrypt the plaintext using the Public Key
-      const encryptedData = await encryptRSA(
+      const encryptedData = encryptRSA(plaintext, generatedKeys.publicKey);
+      // Step 2: Decrypt the encrypted data using the Private Key
+      const decryptedData = decryptRSA(encryptedData, generatedKeys.privateKey);
+      // Step 3: Validation
+      if (decryptedData === plaintext) {
+        console.log('✅ RSA Encryption and Decryption Successful!');
+      } else {
+        console.error('❌ Decrypted data does not match original plaintext!');
+      }
+    } catch (error) {
+      console.error('⚠️ RSA Error:', error);
+    }
+  }
+
+  async function handleAsyncRSAEncryption() {
+    const plaintext = 'Hello, RSA Encryption!';
+    const generatedKeys = generateRSAKeyPair();
+    try {
+      // Step 1: Encrypt the plaintext using the Public Key
+      const encryptedData = await encryptAsyncRSA(
         plaintext,
         generatedKeys.publicKey
       );
       // Step 2: Decrypt the encrypted data using the Private Key
-      const decryptedData = await decryptRSA(
+      const decryptedData = await decryptAsyncRSA(
         encryptedData,
         generatedKeys.privateKey
       );
@@ -49,7 +72,7 @@ export default function DashboardScreen() {
     }
   }
 
-  const handleAESEncryption = async () => {
+  const handleAESEncryption = () => {
     const sampleObject = {
       name: 'John Doe',
       age: 30,
@@ -75,7 +98,37 @@ export default function DashboardScreen() {
     }
   };
 
-  const hashing = async () => {
+  const handleAsyncESEncryption = async () => {
+    const sampleObject = {
+      name: 'John Doe',
+      age: 30,
+      roles: ['admin', 'editor'],
+    };
+    try {
+      const generatedKey = generateAESKey(256);
+      const jsonString = JSON.stringify(sampleObject);
+      const encryptedString = await encryptAsyncAES(jsonString, generatedKey);
+      console.log('encrypted Object:', encryptedString);
+
+      // Decrypt and parse JSON
+      const decryptedJsonString = await decryptAsyncAES(
+        encryptedString,
+        generatedKey
+      );
+      const decryptedObject = JSON.parse(decryptedJsonString);
+      console.log('Decrypted Object:', decryptedObject);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        let error = err.cause as EncryptionError;
+        console.log('❌ Error:123', error.message);
+      } else {
+        console.log('❌ Unknown Error:', err);
+      }
+      setResult('An error occurred during encryption/decryption.');
+    }
+  };
+
+  const hashing = () => {
     try {
       console.log('--- Hashing ---');
       const sha256Hash = hashSHA256('Hello Hashing');
@@ -88,17 +141,17 @@ export default function DashboardScreen() {
     }
   };
 
-  const hmac = async () => {
+  const hmac = () => {
     try {
       console.log('--- HMAC ---');
-      const hmac = hmacSHA256('Hello HMAC', 'MyHMACKey');
-      console.log('HMAC-SHA256:', hmac);
+      const hmachash = hmacSHA256('Hello HMAC', 'MyHMACKey');
+      console.log('HMAC-SHA256:', hmachash);
     } catch (err) {
       console.log('error is', err);
     }
   };
 
-  const signData = async () => {
+  const signData = () => {
     const keyPair = generateECDSAKeyPair();
     const data = 'Hello, ECDSA!';
     const signature = signDataECDSA(data, keyPair.privateKey);
@@ -108,7 +161,7 @@ export default function DashboardScreen() {
     console.log('Is Valid Signature:', isValid);
   };
 
-  const base64 = async () => {
+  const base64 = () => {
     try {
       console.log('--- Base64 Encoding/Decoding ---');
       const base64Encoded = base64Encode('Hello Base64 Encoding');
@@ -121,7 +174,7 @@ export default function DashboardScreen() {
     }
   };
 
-  const createRandomString = async () => {
+  const createRandomString = () => {
     try {
       console.log('--- Utilities ---');
       const randomString = generateRandomString(16);
@@ -134,8 +187,16 @@ export default function DashboardScreen() {
   return (
     <View style={{ flex: 1, alignItems: 'center', paddingTop: 80 }}>
       <Button title="Encrypt & Decrypt AES" onPress={handleAESEncryption} />
+      <Button
+        title="Async Encrypt & Decrypt AES"
+        onPress={handleAsyncESEncryption}
+      />
 
       <Button title="Encrypt & Decrypt RSA" onPress={handleRSAEncryption} />
+      <Button
+        title="Encrypt & Decrypt RSA"
+        onPress={handleAsyncRSAEncryption}
+      />
 
       <Button title="Hashing" onPress={hashing} />
 
