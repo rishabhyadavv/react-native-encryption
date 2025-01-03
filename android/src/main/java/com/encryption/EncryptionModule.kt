@@ -5,24 +5,17 @@ import com.facebook.react.module.annotations.ReactModule
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.bridge.Promise
-import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
-import javax.crypto.Cipher
-import javax.crypto.Mac
 import javax.crypto.spec.IvParameterSpec
-import javax.crypto.spec.SecretKeySpec
 import java.security.*
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
 import android.util.Base64
-import kotlin.math.roundToInt
-import java.security.interfaces.ECPrivateKey
-import java.security.interfaces.ECPublicKey
-import java.security.Signature
+import javax.crypto.Cipher
+
 import java.security.KeyFactory
 import kotlinx.coroutines.*
 import kotlin.coroutines.CoroutineContext
-import javax.crypto.spec.GCMParameterSpec
+import java.io.File
 
 @ReactModule(name = EncryptionModule.NAME)
 class EncryptionModule(reactContext: ReactApplicationContext):
@@ -45,20 +38,7 @@ class EncryptionModule(reactContext: ReactApplicationContext):
          */
         @Throws(IllegalArgumentException::class)
         override fun generateAESKey(keySize: Double): String {
-            val validKeySizes = setOf(128, 192, 256)
-            if (keySize.toInt() !in validKeySizes) {
-                throw IllegalArgumentException("Invalid AES key size. Must be 128, 192, or 256 bits.")
-            }
-
-            return try {
-                val keyGenerator = KeyGenerator.getInstance("AES")
-                keyGenerator.init(keySize.toInt())
-                val secretKey: SecretKey = keyGenerator.generateKey()
-                val keyBytes = secretKey.encoded
-                Base64.encodeToString(keyBytes, Base64.DEFAULT)
-            } catch (e: Exception) {
-                throw IllegalArgumentException("Failed to generate AES key: ${e.localizedMessage}", e)
-            }
+            return AESCryptoUtils.generateAESKey(keySize)
         }
 
         // -----------------------------------------
@@ -80,37 +60,7 @@ class EncryptionModule(reactContext: ReactApplicationContext):
                 throw IllegalArgumentException("Data or key cannot be empty.")
             }
 
-            // Decode the key from Base64
-            val keyBytes =
-                try {
-                    Base64.decode(key, Base64.DEFAULT)
-                } catch (e: Exception) {
-                    throw IllegalArgumentException("Invalid AES key format: ${e.localizedMessage}")
-                }
-
-            // Validate key length
-            if (keyBytes.size != 16 && keyBytes.size != 24 && keyBytes.size != 32) {
-                throw IllegalArgumentException("Invalid AES key size. Must be 16, 24, or 32 bytes (128, 192, or 256 bits).")
-            }
-
-            // Generate Initialization Vector (IV)
-            val iv = ByteArray(16)
-            SecureRandom().nextBytes(iv)
-            val ivSpec = IvParameterSpec(iv)
-
-            // Initialize Cipher
-            val secretKey = SecretKeySpec(keyBytes, "AES")
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec)
-
-            // Encrypt Data
-            val encryptedData = cipher.doFinal(data.toByteArray(Charsets.UTF_8))
-
-            // Combine IV and Encrypted Data
-            val combined = iv + encryptedData
-
-            // Return as Base64 String
-            return Base64.encodeToString(combined, Base64.DEFAULT)
+            return AESCryptoUtils.encrypt(data, key)
         }
 
         /**
@@ -128,43 +78,7 @@ class EncryptionModule(reactContext: ReactApplicationContext):
                 throw IllegalArgumentException("Data or key cannot be empty.")
             }
 
-            // Decode the AES key from Base64
-            val keyBytes =
-                try {
-                    Base64.decode(key, Base64.DEFAULT)
-                } catch (e: Exception) {
-                    throw IllegalArgumentException("Invalid AES key format: ${e.localizedMessage}")
-                }
-
-            // Validate key length
-            if (keyBytes.size != 16 && keyBytes.size != 24 && keyBytes.size != 32) {
-                throw IllegalArgumentException("Invalid AES key size. Must be 16, 24, or 32 bytes (128, 192, or 256 bits).")
-            }
-
-            // Decode the encrypted data from Base64
-            val decodedData =
-                try {
-                    Base64.decode(data, Base64.DEFAULT)
-                } catch (e: Exception) {
-                    throw IllegalArgumentException("Invalid encrypted data format: ${e.localizedMessage}")
-                }
-
-            // Extract IV and encrypted data
-            if (decodedData.size < 16) {
-                throw IllegalArgumentException("Invalid encrypted data. Data too short to contain IV.")
-            }
-
-            val iv = decodedData.copyOfRange(0, 16)
-            val encryptedBytes = decodedData.copyOfRange(16, decodedData.size)
-            val ivSpec = IvParameterSpec(iv)
-
-            // Initialize Cipher for AES decryption
-            val secretKey = SecretKeySpec(keyBytes, "AES")
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec)
-
-            // Decrypt and return as String
-            return String(cipher.doFinal(encryptedBytes), Charsets.UTF_8)
+           return AESCryptoUtils.decrypt(data, key)
         }
 
        /**
@@ -178,37 +92,12 @@ class EncryptionModule(reactContext: ReactApplicationContext):
      override fun encryptAsyncAES(data: String, key: String, promise: Promise) {
         coroutineScope.launch {
             try {
-                if (data.isEmpty() || key.isEmpty()) {
-                    throw IllegalArgumentException("Data or key cannot be empty.")
-                }
-
-                // Decode the AES key from Base64
-                val keyBytes = Base64.decode(key, Base64.DEFAULT)
-                if (keyBytes.size !in listOf(16, 24, 32)) {
-                    throw IllegalArgumentException("Invalid AES key size. Must be 16, 24, or 32 bytes (128, 192, or 256 bits).")
-                }
-
-                // Generate Initialization Vector (IV)
-                val iv = ByteArray(12)
-                SecureRandom().nextBytes(iv)
-                val ivSpec = GCMParameterSpec(128, iv)
-
-                // Initialize Cipher
-                val secretKey = SecretKeySpec(keyBytes, "AES")
-                val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-                cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec)
-
-                // Encrypt Data
-                val encryptedData = cipher.doFinal(data.toByteArray(Charsets.UTF_8))
-
-                // Combine IV and Encrypted Data
-                val combined = iv + encryptedData
-
-                // Return as Base64 String
-                val result = Base64.encodeToString(combined, Base64.DEFAULT)
+                val result = AESCryptoUtils.encrypt(data, key)
                 promise.resolve(result)
-            } catch (e: Exception) {
+            } catch (e: IllegalArgumentException) {
                 promise.reject("ENCRYPTION_ERROR", e.localizedMessage)
+            } catch (e: Exception) {
+                promise.reject("ENCRYPTION_ERROR", "Unexpected error occurred: ${e.localizedMessage}")
             }
         }
     }
@@ -224,40 +113,102 @@ class EncryptionModule(reactContext: ReactApplicationContext):
     override fun decryptAsyncAES(data: String, key: String, promise: Promise) {
         coroutineScope.launch {
             try {
-                if (data.isEmpty() || key.isEmpty()) {
-                    throw IllegalArgumentException("Data or key cannot be empty.")
-                }
-
-                // Decode the AES key from Base64
-                val keyBytes = Base64.decode(key, Base64.DEFAULT)
-                if (keyBytes.size !in listOf(16, 24, 32)) {
-                    throw IllegalArgumentException("Invalid AES key size. Must be 16, 24, or 32 bytes (128, 192, or 256 bits).")
-                }
-
-                // Decode the encrypted data from Base64
-                val decodedData = Base64.decode(data, Base64.DEFAULT)
-                if (decodedData.size < 12) {
-                    throw IllegalArgumentException("Invalid encrypted data. Data too short to contain IV.")
-                }
-
-                val iv = decodedData.copyOfRange(0, 12)
-                val encryptedBytes = decodedData.copyOfRange(12, decodedData.size)
-                val ivSpec = GCMParameterSpec(128, iv)
-
-                // Initialize Cipher for AES decryption
-                val secretKey = SecretKeySpec(keyBytes, "AES")
-                val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-                cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec)
-
-                // Decrypt and return as String
-                val decryptedData = cipher.doFinal(encryptedBytes)
-                val result = String(decryptedData, Charsets.UTF_8)
+                val result = AESCryptoUtils.decrypt(data, key)
                 promise.resolve(result)
-            } catch (e: Exception) {
+            } catch (e: IllegalArgumentException) {
                 promise.reject("DECRYPTION_ERROR", e.localizedMessage)
+            } catch (e: Exception) {
+                promise.reject("DECRYPTION_ERROR", "Unexpected error occurred: ${e.localizedMessage}")
             }
         }
     }
+
+    /**
+ * Asynchronously Encrypts a file using AES-GCM.
+ *
+ * @param inputPath Path to the input file.
+ * @param outputPath Path to save the encrypted file.
+ * @param key Base64-encoded AES key.
+ * @param promise React Native promise to return results or errors.
+ */
+@Throws(IllegalArgumentException::class, Exception::class)
+override fun encryptFile(inputPath: String, outputPath: String, key: String, promise: Promise) {
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            // Read file content
+            val inputFile = File(inputPath)
+            val inputData = inputFile.readBytes()
+
+            // Encrypt using AESCryptoUtils
+            val encryptedData = AESCryptoUtils.encryptBytes(inputData, key)
+
+            // Write encrypted data to output file
+            val outputFile = File(outputPath)
+            outputFile.writeBytes(encryptedData)
+
+            withContext(Dispatchers.Main) {
+                promise.resolve(outputFile.absolutePath)
+            }
+        } catch (e: IllegalArgumentException) {
+            withContext(Dispatchers.Main) {
+                promise.reject("FILE_ENCRYPTION_ERROR", e.localizedMessage)
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                promise.reject("FILE_ENCRYPTION_ERROR", "Unexpected error occurred: ${e.localizedMessage}")
+            }
+        }
+    }
+}
+
+/**
+ * Asynchronously Decrypts an AES-GCM encrypted file.
+ *
+ * @param inputPath Path to the encrypted file.
+ * @param key Base64-encoded AES key.
+ * @param promise React Native promise to return results or errors.
+ */
+@Throws(IllegalArgumentException::class, Exception::class)
+override fun decryptFile(inputPath: String, key: String, promise: Promise) {
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            // ✅ Step 1: Read the Encrypted File
+            val inputFile = File(inputPath)
+            if (!inputFile.exists()) {
+                withContext(Dispatchers.Main) {
+                    promise.reject("DECRYPTION_ERROR", "Input file does not exist at path: $inputPath")
+                }
+                return@launch
+            }
+
+            val encryptedData = inputFile.readBytes()
+
+            // ✅ Step 2: Decrypt File Data using AESCryptoUtils.decryptBytes
+            val decryptedData = AESCryptoUtils.decryptBytes(encryptedData, key)
+
+            // ✅ Step 3: Convert Decrypted Data to String
+            val decryptedString = String(decryptedData, Charsets.UTF_8)
+
+            // ✅ Step 4: Resolve Promise with Decrypted Content
+            withContext(Dispatchers.Main) {
+                promise.resolve(decryptedString)
+            }
+
+        } catch (e: IllegalArgumentException) {
+            withContext(Dispatchers.Main) {
+                promise.reject("DECRYPTION_ERROR", e.localizedMessage)
+            }
+        } catch (e: javax.crypto.AEADBadTagException) {
+            withContext(Dispatchers.Main) {
+                promise.reject("DECRYPTION_ERROR", "Authentication failed: ${e.localizedMessage}")
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                promise.reject("DECRYPTION_EXCEPTION", "Unexpected error: ${e.localizedMessage}")
+            }
+        }
+    }
+}
 
         // -----------------------------------------
         // 🔑 AES Key Generation
@@ -427,11 +378,7 @@ class EncryptionModule(reactContext: ReactApplicationContext):
          */
         @Throws(Exception::class)
         override fun hashSHA256(data: String): String {
-            val digest = MessageDigest.getInstance("SHA-256")
-            val hash = digest.digest(data.toByteArray())
-            return hash.joinToString("") {
-                "%02x".format(it)
-            }
+           return HashingUtils.hashSHA256(data)
         }
 
         /**
@@ -443,18 +390,7 @@ class EncryptionModule(reactContext: ReactApplicationContext):
          */
         @Throws(Exception::class)
         override fun hashSHA512(input: String): String {
-            if (input.isEmpty()) {
-                throw IllegalArgumentException("Input string cannot be empty for SHA-512 hashing")
-            }
-
-            val bytes = input.toByteArray(Charsets.UTF_8)
-            val md = MessageDigest.getInstance("SHA-512")
-            val digest = md.digest(bytes)
-
-            // Convert to hex string
-            return digest.joinToString("") {
-                "%02x".format(it)
-            }
+            return HashingUtils.hashSHA512(input)
         }
 
         // -----------------------------------------
@@ -471,13 +407,7 @@ class EncryptionModule(reactContext: ReactApplicationContext):
          */
         @Throws(Exception::class)
         override fun hmacSHA256(data: String, key: String): String {
-            val secretKey = SecretKeySpec(key.toByteArray(), "HmacSHA256")
-            val mac = Mac.getInstance("HmacSHA256")
-            mac.init(secretKey)
-            val hash = mac.doFinal(data.toByteArray())
-            return hash.joinToString("") {
-                "%02x".format(it)
-            }
+           return HashingUtils.hmacSHA256(data, key)
         }
 
         // -----------------------------------------
@@ -493,18 +423,7 @@ class EncryptionModule(reactContext: ReactApplicationContext):
          */
         @Throws(Exception::class)
         override fun generateRandomString(input: Double): String {
-            val length = input.roundToInt()
-            if (length <= 0) {
-                throw IllegalArgumentException("Length must be a positive number.")
-            }
-
-            val charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-            val random = SecureRandom()
-            return (1..length)
-                .map {
-                    charset[random.nextInt(charset.length)]
-                }
-                .joinToString("")
+           return HashingUtils.generateRandomString(input)
         }
 
         /**
@@ -515,15 +434,7 @@ class EncryptionModule(reactContext: ReactApplicationContext):
          */
         @Throws(Exception::class)
         override fun base64Encode(input: String): String {
-            if (input.isEmpty()) {
-                throw IllegalArgumentException("Input string cannot be empty for Base64 encoding")
-            }
-
-            return try {
-                Base64.encodeToString(input.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-            } catch (e: Exception) {
-                throw Exception("Failed to encode Base64: ${e.message}")
-            }
+           return HashingUtils.base64Encode(input)
         }
 
         /**
@@ -534,16 +445,7 @@ class EncryptionModule(reactContext: ReactApplicationContext):
          */
         @Throws(Exception::class)
         override fun base64Decode(input: String): String {
-            if (input.isEmpty()) {
-                throw IllegalArgumentException("Input string cannot be empty for Base64 decoding")
-            }
-
-            return try {
-                val decodedBytes = Base64.decode(input, Base64.NO_WRAP)
-                String(decodedBytes, Charsets.UTF_8)
-            } catch (e: Exception) {
-                throw Exception("Failed to decode Base64: ${e.message}")
-            }
+           return HashingUtils.base64Decode(input)
         }
 
         /**
@@ -560,29 +462,7 @@ class EncryptionModule(reactContext: ReactApplicationContext):
          */
         @Throws(Exception::class)
         override fun generateECDSAKeyPair(): WritableMap {
-            return try {
-                // Generate ECDSA Key Pair
-                val keyPairGenerator = KeyPairGenerator.getInstance("EC")
-                keyPairGenerator.initialize(256) // Using 256-bit ECC key
-                val keyPair = keyPairGenerator.genKeyPair()
-
-                val publicKey = keyPair.public.encoded
-                val privateKey = keyPair.private.encoded
-
-                // Encode keys as Base64
-                val publicKeyBase64 = Base64.encodeToString(publicKey, Base64.DEFAULT)
-                val privateKeyBase64 = Base64.encodeToString(privateKey, Base64.DEFAULT)
-
-                // Create WritableMap
-                val result: WritableMap = Arguments.createMap()
-                result.putString("publicKey", publicKeyBase64)
-                result.putString("privateKey", privateKeyBase64)
-
-                result
-            } catch (e: Exception) {
-                e.printStackTrace()
-                throw Exception("Failed to generate ECDSA key pair: ${e.localizedMessage}")
-            }
+            return SignatureUtils.generateECDSAKeyPair()
         }
 
         /**
@@ -601,25 +481,7 @@ class EncryptionModule(reactContext: ReactApplicationContext):
          */
         @Throws(Exception::class)
         override fun signDataECDSA(data: String, key: String): String {
-            return try {
-                // Decode the private key from Base64
-                val privateKeyBytes = Base64.decode(key, Base64.DEFAULT)
-                val keyFactory = KeyFactory.getInstance("EC")
-                val privateKeySpec = PKCS8EncodedKeySpec(privateKeyBytes)
-                val privateKey = keyFactory.generatePrivate(privateKeySpec)
-
-                // Initialize Signature Object
-                val signature = Signature.getInstance("SHA256withECDSA")
-                signature.initSign(privateKey)
-                signature.update(data.toByteArray(Charsets.UTF_8))
-
-                // Generate Signature
-                val signedData = signature.sign()
-                Base64.encodeToString(signedData, Base64.DEFAULT)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                throw Exception("Failed to sign data with ECDSA: ${e.localizedMessage}")
-            }
+            return SignatureUtils.signDataECDSA(data,key)
         }
 
         /**
@@ -639,27 +501,7 @@ class EncryptionModule(reactContext: ReactApplicationContext):
          */
         @Throws(Exception::class)
         override fun verifySignatureECDSA(data: String, signatureBase64: String, key: String): Boolean {
-            return try {
-                // Decode the public key from Base64
-                val publicKeyBytes = Base64.decode(key, Base64.DEFAULT)
-                val keyFactory = KeyFactory.getInstance("EC")
-                val publicKeySpec = X509EncodedKeySpec(publicKeyBytes)
-                val publicKey = keyFactory.generatePublic(publicKeySpec)
-
-                // Initialize the Signature object for verification
-                val signature = Signature.getInstance("SHA256withECDSA")
-                signature.initVerify(publicKey)
-                signature.update(data.toByteArray(Charsets.UTF_8))
-
-                // Decode the signature from Base64
-                val signatureBytes = Base64.decode(signatureBase64, Base64.DEFAULT)
-
-                // Verify the signature
-                signature.verify(signatureBytes)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                throw Exception("Failed to verify ECDSA signature: ${e.localizedMessage}")
-            }
+            return SignatureUtils.verifySignatureECDSA(data,signatureBase64,key)
         }
 
         companion object {

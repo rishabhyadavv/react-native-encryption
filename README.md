@@ -130,6 +130,8 @@ Each method can be accessed directly without a default object wrapper.
 - **`decryptAsyncAES(data: string, key: string): Promise<string>`**
 - **`encryptAsyncRSA(data: string, key: string): Promise<string>`**
 - **`decryptAsyncRSA(data: string, key: string): Promise<string>`**
+- **`encryptFile(inputPath: string,outputPath: string, key: string): Promise<string>`**
+- **`decryptFile(inputPath: string, key: string): Promise<string>`**
 ---
 
 ## 🛠️ **6. Usage Examples**
@@ -156,8 +158,12 @@ import {
   encryptAsyncAES,
   decryptAsyncAES,
   encryptAsyncRSA,
-  decryptAsyncRSA
+  decryptAsyncRSA,
+  encryptFile,
+  decryptFile
 } from 'rn-encryption';
+import RNFS from 'react-native-fs';
+
 interface EncryptionError {
   name: string;
   message: string;
@@ -165,20 +171,18 @@ interface EncryptionError {
 export default function DashboardScreen() {
   const [result, setResult] = useState(''); // Encryption/Decryption result
 
-   function handleRSAEncryption() {
+  const inputPath = `${RNFS.DocumentDirectoryPath}/data.txt`;
+const outputPath = `${RNFS.DocumentDirectoryPath}/data.enc`;
+const decryptedPath = `${RNFS.DocumentDirectoryPath}/data-decrypted.txt`;
+
+  function handleRSAEncryption() {
     const plaintext = 'Hello, RSA Encryption!';
     const generatedKeys = generateRSAKeyPair();
     try {
       // Step 1: Encrypt the plaintext using the Public Key
-      const encryptedData =  encryptRSA(
-        plaintext,
-        generatedKeys.publicKey
-      );
+      const encryptedData = encryptRSA(plaintext, generatedKeys.publicKey);
       // Step 2: Decrypt the encrypted data using the Private Key
-      const decryptedData =  decryptRSA(
-        encryptedData,
-        generatedKeys.privateKey
-      );
+      const decryptedData = decryptRSA(encryptedData, generatedKeys.privateKey);
       // Step 3: Validation
       if (decryptedData === plaintext) {
         console.log('✅ RSA Encryption and Decryption Successful!');
@@ -254,7 +258,10 @@ export default function DashboardScreen() {
       console.log('encrypted Object:', encryptedString);
 
       // Decrypt and parse JSON
-      const decryptedJsonString = await decryptAsyncAES(encryptedString, generatedKey);
+      const decryptedJsonString = await decryptAsyncAES(
+        encryptedString,
+        generatedKey
+      );
       const decryptedObject = JSON.parse(decryptedJsonString);
       console.log('Decrypted Object:', decryptedObject);
     } catch (err: unknown) {
@@ -284,8 +291,8 @@ export default function DashboardScreen() {
   const hmac = () => {
     try {
       console.log('--- HMAC ---');
-      const hmac = hmacSHA256('Hello HMAC', 'MyHMACKey');
-      console.log('HMAC-SHA256:', hmac);
+      const hmachash = hmacSHA256('Hello HMAC', 'MyHMACKey');
+      console.log('HMAC-SHA256:', hmachash);
     } catch (err) {
       console.log('error is', err);
     }
@@ -301,7 +308,7 @@ export default function DashboardScreen() {
     console.log('Is Valid Signature:', isValid);
   };
 
-  const base64 = ()=> {
+  const base64 = () => {
     try {
       console.log('--- Base64 Encoding/Decoding ---');
       const base64Encoded = base64Encode('Hello Base64 Encoding');
@@ -324,15 +331,54 @@ export default function DashboardScreen() {
     }
   };
 
+  async function handleEncryptFileAES() {
+    try {
+      // Step 1: Write Sample Data to a File
+      await RNFS.writeFile(inputPath, 'This is a sensitive file content.', 'utf8');
+      console.log(`File written at: ${inputPath}`);
+
+      const generatedKey = generateAESKey(256);
+      console.log('generatedKey ', generatedKey);
+
+  
+      // Step 2: Encrypt the File
+      const encryptedFilePath = await encryptFile(inputPath, outputPath, generatedKey);
+      console.log('Encrypted File Path:', encryptedFilePath);
+  
+      // Step 3: Verify Encrypted File
+      const encryptedFileExists = await RNFS.exists(outputPath);
+      console.log('Encrypted File Exists:', encryptedFileExists);
+
+      const decryptedContent = await decryptFile(outputPath, generatedKey);
+      console.log('Decrypted File Content:', decryptedContent);
+  
+      // Step 5: Write Decrypted Content to a New File
+      await RNFS.writeFile(decryptedPath, decryptedContent, 'utf8');
+      console.log(`Decrypted file saved at: ${decryptedPath}`);
+    } catch (error) {
+      console.error('Encryption Error:', error);
+    }
+  }
+
+
   return (
     <View style={{ flex: 1, alignItems: 'center', paddingTop: 80 }}>
       <Button title="Encrypt & Decrypt AES" onPress={handleAESEncryption} />
-      <Button title="Async Encrypt & Decrypt AES" onPress={handleAsyncESEncryption} />
+      <Button
+        title="Async Encrypt & Decrypt AES"
+        onPress={handleAsyncESEncryption}
+      />
 
+<Button
+        title="Encrypt & Decrypt File"
+        onPress={handleEncryptFileAES}
+      />
 
       <Button title="Encrypt & Decrypt RSA" onPress={handleRSAEncryption} />
-      <Button title="Encrypt & Decrypt RSA" onPress={handleAsyncRSAEncryption} />
-
+      <Button
+        title="Encrypt & Decrypt RSA"
+        onPress={handleAsyncRSAEncryption}
+      />
 
       <Button title="Hashing" onPress={hashing} />
 
@@ -382,6 +428,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
+
 ```
 
 ---

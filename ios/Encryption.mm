@@ -116,6 +116,35 @@ RCT_EXPORT_MODULE()
     });
 }
 
+- (void)encryptFile:(NSString *)inputPath outputPath:(NSString *)outputPath key:(NSString *)key resolve:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject {
+    
+    __typeof(self) __weak weakSelf = self;
+    // Run on a background thread to ensure it doesn't block the UI
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        __typeof(weakSelf) __strong strongSelf = weakSelf;
+        if (!strongSelf) {
+            reject(@"ENCRYPTION_ERROR", @"Encryption failed: self was deallocated", nil);
+            return;
+        }
+        
+        @try {
+            NSError *error = nil;
+            NSString *encryptedString = [strongSelf->cryptoUtil encryptFile:inputPath outputPath:outputPath key:key errorObj:&error];
+            
+                                 if (error) {
+                reject(@"ENCRYPTION_ERROR", error.localizedDescription, nil);
+                
+            } else {
+                resolve(encryptedString);
+            }
+        }
+        @catch (NSException *exception) {
+            reject(@"ENCRYPTION_EXCEPTION", exception.reason, nil);
+        }
+    });
+}
+
 
 - (NSString *)cryptorStatusToString:(CCCryptorStatus)status {
     switch (status) {
@@ -170,6 +199,35 @@ RCT_EXPORT_MODULE()
         @try {
             NSError *error = nil;
             NSString *encryptedString = [strongSelf->cryptoUtil decryptAES:data key:key errorObj:&error];
+            
+                                 if (error) {
+                reject(@"ENCRYPTION_ERROR", error.localizedDescription, nil);
+                
+            } else {
+                resolve(encryptedString);
+            }
+        }
+        @catch (NSException *exception) {
+            reject(@"ENCRYPTION_EXCEPTION", exception.reason, nil);
+        }
+    });
+}
+
+- (void)decryptFile:(NSString *)inputPath key:(NSString *)key resolve:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject {
+    
+    __typeof(self) __weak weakSelf = self;
+    // Run on a background thread to ensure it doesn't block the UI
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        __typeof(weakSelf) __strong strongSelf = weakSelf;
+        if (!strongSelf) {
+            reject(@"ENCRYPTION_ERROR", @"Encryption failed: self was deallocated", nil);
+            return;
+        }
+        
+        @try {
+            NSError *error = nil;
+            NSString *encryptedString = [strongSelf->cryptoUtil decryptFile:inputPath key:key errorObj:&error];
             
                                  if (error) {
                 reject(@"ENCRYPTION_ERROR", error.localizedDescription, nil);

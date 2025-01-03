@@ -20,13 +20,21 @@ import {
   decryptAsyncAES,
   encryptAsyncRSA,
   decryptAsyncRSA,
+  encryptFile,
+  decryptFile,
 } from 'rn-encryption';
+import RNFS from 'react-native-fs';
+
 interface EncryptionError {
   name: string;
   message: string;
 }
 export default function DashboardScreen() {
   const [result, setResult] = useState(''); // Encryption/Decryption result
+
+  const inputPath = `${RNFS.DocumentDirectoryPath}/data.txt`;
+  const outputPath = `${RNFS.DocumentDirectoryPath}/data.enc`;
+  const decryptedPath = `${RNFS.DocumentDirectoryPath}/data-decrypted.txt`;
 
   function handleRSAEncryption() {
     const plaintext = 'Hello, RSA Encryption!';
@@ -184,6 +192,42 @@ export default function DashboardScreen() {
     }
   };
 
+  async function handleEncryptFileAES() {
+    try {
+      // Step 1: Write Sample Data to a File
+      await RNFS.writeFile(
+        inputPath,
+        'This is a sensitive file content.',
+        'utf8'
+      );
+      console.log(`File written at: ${inputPath}`);
+
+      const generatedKey = generateAESKey(256);
+      console.log('generatedKey ', generatedKey);
+
+      // Step 2: Encrypt the File
+      const encryptedFilePath = await encryptFile(
+        inputPath,
+        outputPath,
+        generatedKey
+      );
+      console.log('Encrypted File Path:', encryptedFilePath);
+
+      // Step 3: Verify Encrypted File
+      const encryptedFileExists = await RNFS.exists(outputPath);
+      console.log('Encrypted File Exists:', encryptedFileExists);
+
+      const decryptedContent = await decryptFile(outputPath, generatedKey);
+      console.log('Decrypted File Content:', decryptedContent);
+
+      // Step 5: Write Decrypted Content to a New File
+      await RNFS.writeFile(decryptedPath, decryptedContent, 'utf8');
+      console.log(`Decrypted file saved at: ${decryptedPath}`);
+    } catch (error) {
+      console.error('Encryption Error:', error);
+    }
+  }
+
   return (
     <View style={{ flex: 1, alignItems: 'center', paddingTop: 80 }}>
       <Button title="Encrypt & Decrypt AES" onPress={handleAESEncryption} />
@@ -191,6 +235,8 @@ export default function DashboardScreen() {
         title="Async Encrypt & Decrypt AES"
         onPress={handleAsyncESEncryption}
       />
+
+      <Button title="Encrypt & Decrypt File" onPress={handleEncryptFileAES} />
 
       <Button title="Encrypt & Decrypt RSA" onPress={handleRSAEncryption} />
       <Button

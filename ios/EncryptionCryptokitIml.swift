@@ -74,33 +74,96 @@ public class CryptoUtility: NSObject {
         return keyData.base64EncodedString()
     }
     
-    // MARK: - AES Encryption
-    
+    // MARK: - AES Encryption Helper
+
+    /// Shared method for AES encryption logic.
+    /// - Parameters:
+    ///   - data: Data to be encrypted.
+    ///   - key: Base64-encoded AES key.
+    /// - Throws: EncryptionError
+    /// - Returns: Encrypted data as `Data`
+    private func performAESEncryption(data: Data, key: String) throws -> Data {
+        // Validate Key
+        guard let keyData = Data(base64Encoded: key) else {
+            throw EncryptionError.invalidKey
+        }
+        
+        // Initialize Symmetric Key
+        let symmetricKey = SymmetricKey(data: keyData)
+        
+        // Encrypt Data
+        let sealedBox = try AES.GCM.seal(data, using: symmetricKey)
+        guard let combinedData = sealedBox.combined else {
+            throw EncryptionError.encryptionFailed
+        }
+        
+        return combinedData
+    }
+
+    // MARK: - AES Encryption for String
+
     /// Encrypts a string using AES with a Base64 public key.
     /// - Parameters:
     ///   - data: Plain text string to be encrypted.
-    ///   - key: Base64-encoded AES  key.
+    ///   - key: Base64-encoded AES key.
     ///   - errorObj: NSErrorPointer for capturing errors.
     /// - Returns: Base64-encoded encrypted string or nil on failure.
     @objc public func encryptAES(_ data: String, key: String, errorObj: NSErrorPointer) -> String? {
         do {
-            // Validate Data
+            // Convert string to data
             guard let dataToEncrypt = data.data(using: .utf8) else {
                 throw EncryptionError.invalidData
             }
-        
-            guard let keyData = Data(base64Encoded: key) else {
-                throw EncryptionError.invalidKey
-            }
-      
-            // Encrypt Data
-            let symmetricKey = SymmetricKey(data: keyData)
-            let sealedBox = try AES.GCM.seal(dataToEncrypt, using: symmetricKey)
-            guard let combinedData = sealedBox.combined else {
-                throw EncryptionError.encryptionFailed
-            }
             
-            return combinedData.base64EncodedString()
+            // Perform encryption
+            let encryptedData = try performAESEncryption(data: dataToEncrypt, key: key)
+            return encryptedData.base64EncodedString()
+            
+        } catch let encryptionError as EncryptionError {
+            errorObj?.pointee = NSError(
+                domain: "CryptoUtility",
+                code: -1,
+                userInfo: [
+                    NSLocalizedDescriptionKey: encryptionError.localizedDescription
+                ]
+            )
+            return nil
+        } catch {
+            errorObj?.pointee = NSError(
+                domain: "CryptoUtility",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "An unknown encryption error occurred."]
+            )
+            return nil
+        }
+    }
+
+    // MARK: - AES Encryption for File
+
+    /// Encrypts a file using AES with a Base64 public key.
+    /// - Parameters:
+    ///   - inputPath: Path to the input file.
+    ///   - outputPath: Path to save the encrypted file.
+    ///   - key: Base64-encoded AES key.
+    ///   - errorObj: NSErrorPointer for capturing errors.
+    /// - Returns: Path to the encrypted file or nil on failure.
+    @objc public func encryptFile(_ inputPath: String, outputPath: String, key: String, errorObj: NSErrorPointer) -> String? {
+        do {
+            // Validate file paths
+            let inputURL = URL(fileURLWithPath: inputPath)
+            let outputURL = URL(fileURLWithPath: outputPath)
+            
+            // Read file data
+            let fileData = try Data(contentsOf: inputURL)
+            
+            // Perform encryption
+            let encryptedData = try performAESEncryption(data: fileData, key: key)
+            
+            // Write encrypted data to output file
+            try encryptedData.write(to: outputURL)
+            
+            return outputURL.path
+            
         } catch let encryptionError as EncryptionError {
             errorObj?.pointee = NSError(
                 domain: "CryptoUtility",
@@ -120,27 +183,40 @@ public class CryptoUtility: NSObject {
         }
     }
     
-    // MARK: - AES Decryption
-    /// Decrypts a string using AES with a Base64 public key.
+    
+    private func performAESDecryption(data: Data, key: String) throws -> Data {
+        // Validate Key
+        guard let keyData = Data(base64Encoded: key) else {
+            throw EncryptionError.invalidKey
+        }
+        
+        // Initialize Symmetric Key
+        let symmetricKey = SymmetricKey(data: keyData)
+        
+        // Decrypt Data
+        let sealedBox = try AES.GCM.SealedBox(combined: data)
+        let decryptedData = try AES.GCM.open(sealedBox, using: symmetricKey)
+        
+        return decryptedData
+    }
+
+    // MARK: - AES Decryption for String
+
+    /// Decrypts a Base64-encoded encrypted string using AES.
     /// - Parameters:
-    ///   - data: Plain text string to be encrypted.
-    ///   - key: Base64-encoded AES  key.
+    ///   - data: Base64-encoded encrypted string.
+    ///   - key: Base64-encoded AES key.
     ///   - errorObj: NSErrorPointer for capturing errors.
     /// - Returns: Decrypted plain text string or nil on failure.
     @objc public func decryptAES(_ data: String, key: String, errorObj: NSErrorPointer) -> String? {
         do {
+            // Decode Base64-encoded data
             guard let encryptedData = Data(base64Encoded: data) else {
                 throw EncryptionError.invalidData
             }
             
-            guard let keyData = Data(base64Encoded: key) else {
-                fatalError("Invalid Base64 key.")
-            }
-           
-            // Perform AES-GCM Decryption
-            let symmetricKey = SymmetricKey(data: keyData)
-            let sealedBox = try AES.GCM.SealedBox(combined: encryptedData)
-            let decryptedData = try AES.GCM.open(sealedBox, using: symmetricKey)
+            // Perform decryption
+            let decryptedData = try performAESDecryption(data: encryptedData, key: key)
             
             // Convert to String
             guard let decryptedString = String(data: decryptedData, encoding: .utf8) else {
@@ -150,22 +226,65 @@ public class CryptoUtility: NSObject {
             return decryptedString
             
         } catch let decryptionError as EncryptionError {
-            if let error = errorObj {
-                error.pointee = NSError(
-                    domain: "CryptoUtility",
-                    code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: decryptionError.localizedDescription]
-                )
-            }
+            errorObj?.pointee = NSError(
+                domain: "CryptoUtility",
+                code: -1,
+                userInfo: [
+                    NSLocalizedDescriptionKey: decryptionError.localizedDescription
+                ]
+            )
             return nil
         } catch {
-            if let error = errorObj {
-                error.pointee = NSError(
-                    domain: "CryptoUtility",
-                    code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "An unknown decryption error occurred."]
-                )
+            errorObj?.pointee = NSError(
+                domain: "CryptoUtility",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "An unknown decryption error occurred."]
+            )
+            return nil
+        }
+    }
+
+    // MARK: - AES Decryption for File
+
+    /// Decrypts an AES-encrypted file using a Base64-encoded AES key.
+    /// - Parameters:
+    ///   - inputPath: Path to the encrypted input file.
+    ///   - key: Base64-encoded AES key.
+    ///   - errorObj: NSErrorPointer for capturing errors.
+    /// - Returns: Decrypted data as a string or nil on failure.
+    @objc public func decryptFile(_ inputPath: String, key: String, errorObj: NSErrorPointer) -> String? {
+        do {
+            // Validate File Path
+            let inputURL = URL(fileURLWithPath: inputPath)
+            
+            // Read Encrypted File Data
+            let encryptedData = try Data(contentsOf: inputURL)
+            
+            // Perform decryption
+            let decryptedData = try performAESDecryption(data: encryptedData, key: key)
+            
+            // Convert to String
+            guard let decryptedString = String(data: decryptedData, encoding: .utf8) else {
+                throw EncryptionError.decryptionFailed
             }
+            
+            return decryptedString
+            
+        } catch let decryptionError as EncryptionError {
+            errorObj?.pointee = NSError(
+                domain: "CryptoUtility",
+                code: -1,
+                userInfo: [
+                    NSLocalizedDescriptionKey: decryptionError.localizedDescription
+                ]
+            )
+            return nil
+        } catch {
+            errorObj?.pointee = NSError(
+                domain: "CryptoUtility",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "An unknown decryption error occurred."]
+            )
             return nil
         }
     }

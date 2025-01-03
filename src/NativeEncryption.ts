@@ -8,6 +8,12 @@ export interface Spec extends TurboModule {
   generateAESKey(keySize: number): string;
   encryptAES(data: string, key: string): string;
   decryptAES(data: string, key: string): string;
+  encryptFile(
+    inputPath: string,
+    outputPath: string,
+    key: string
+  ): Promise<string>;
+  decryptFile(inputPath: string, key: string): Promise<string>;
   encryptAsyncAES(data: string, key: string): Promise<string>;
   decryptAsyncAES(data: string, key: string): Promise<string>;
   encryptRSA(data: string, publicKey: string): string;

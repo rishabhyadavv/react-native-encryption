@@ -9,6 +9,16 @@ export function encryptAES(data: string, key: string): string {
 export function decryptAES(data: string, key: string): string {
   return Encryption.decryptAES(data, key);
 }
+export function encryptFile(
+  inputPath: string,
+  outputPath: string,
+  key: string
+): Promise<string> {
+  return Encryption.encryptFile(inputPath, outputPath, key);
+}
+export function decryptFile(inputPath: string, key: string): Promise<string> {
+  return Encryption.decryptFile(inputPath, key);
+}
 
 export function encryptAsyncAES(data: string, key: string): Promise<string> {
   return Encryption.encryptAsyncAES(data, key);
