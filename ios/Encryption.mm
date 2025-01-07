@@ -31,7 +31,7 @@ RCT_EXPORT_MODULE()
 }
 
 
-- (NSString *)generateHmacKey:(double)keySize {
+- (NSString *)generateHMACKey:(double)keySize {
     
     return [cryptoUtil generateHMACKey:keySize];
 }
