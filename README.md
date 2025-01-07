@@ -1,6 +1,8 @@
 # 📚 **React Native Integration Guide for `rn-encryption` Library**
 
 This guide explains how to directly access methods from the `rn-encryption` library in a **React Native project**, including usage examples for AES, RSA, Hashing, HMAC, Random String, and Base64 utilities.
+- **Mobile (iOS & Android): Utilizes native implementations through JSI (JavaScript Interface) via Turbo Modules for encryption.**
+- **Web: Leverages crypto.subtle for encryption functionality. https://www.npmjs.com/package/web-secure-encryption is being used to support encryption for web.**
 
 ---
 
@@ -92,7 +94,9 @@ import {
 } from 'rn-encryption';;
 ```
 
-Each method can be accessed directly without a default object wrapper.
+- **Each method can be accessed directly without a default object wrapper.**
+- **Please note that encryptFile/decryptFile methods are not available for web yet.**
+- **All web methods have promises while few native methods can be called without promises.**
 
 ---
 
@@ -136,7 +140,7 @@ Each method can be accessed directly without a default object wrapper.
 - **`decryptFile(inputPath: string, key: string): Promise<string>`**
 ---
 
-## 🛠️ **6. Usage Examples**
+## 🛠️ **6.Native Usage Examples**
 
 ```tsx
 import { useState } from 'react';
@@ -437,12 +441,169 @@ const styles = StyleSheet.create({
 
 ```
 
-# ** Keychain Integration for keys**
- - It is recommended to save keys in Keychain only. You can refer example in this repo. This is anb sample and can be modified according to the requirements.
+## 🛠️ **7.Web Usage Examples**
+```tsx
+import { View, Text,  StyleSheet, Button } from 'react-native';
+import  { generateAESKey, encryptAES, decryptAES, generateRSAKeyPair, encryptRSA, decryptRSA, generateECDSAKeyPair, signDataECDSA, verifySignatureECDSA, generateHMACKey, hmacSHA256, hmacSHA512, hashSHA256, hashSHA512, generateRandomString, base64Decode, base64Encode } from 'rn-encryption';
+
+export default function HomeScreen() {
+
+  const handleAESEncryption = async () => {
+    const sampleObject = {
+      name: 'John Doe',
+      age: 30,
+      roles: ['admin', 'editor'],
+    };
+    try {
+      const generatedKey = await generateAESKey();
+      const jsonString = JSON.stringify(sampleObject);
+      const encryptedString = await encryptAES(jsonString, generatedKey);
+
+      // Decrypt and parse JSON
+      const decryptedJsonString = await decryptAES(encryptedString, generatedKey);
+      const decryptedObject = JSON.parse(decryptedJsonString);
+      console.log('Decrypted Object:', generatedKey, );
+    } catch (err: unknown) {
+     
+        console.log('❌ Error:123', err);
+     
+    }
+  };
+
+  async function handleAsyncRSAEncryption() {
+    const plaintext = 'Hello, RSA Encryption!';
+    const generatedKeys = await generateRSAKeyPair();
+    try {
+      // Step 1: Encrypt the plaintext using the Public Key
+      const encryptedData = await encryptRSA(
+        plaintext,
+        generatedKeys.publicKey
+      );
+      // Step 2: Decrypt the encrypted data using the Private Key
+      const decryptedData = await decryptRSA(
+        encryptedData,
+        generatedKeys.privateKey
+      );
+      // Step 3: Validation
+      if (decryptedData === plaintext) {
+        console.log('✅ RSA Encryption and Decryption Successful!');
+      } else {
+        console.error('❌ Decrypted data does not match original plaintext!');
+      }
+    } catch (error) {
+      console.error('⚠️ RSA Error:', error);
+    }
+  }
+
+  const hashing = async () => {
+    try {
+      console.log('--- Hashing ---');
+      const sha256Hash = await hashSHA256('Hello Hashing');
+      console.log('SHA-256 Hash:', sha256Hash);
+
+      const sha512Hash = await hashSHA512('Hello Hashing');
+      console.log('SHA-512 Hash:', sha512Hash);
+    } catch (err) {
+      console.log('error is', err);
+    }
+  };
+
+  const hmac = async() => {
+    try {
+      const macKey = await generateHMACKey(256)
+      console.log('--- HMAC ---',macKey);
+
+      const hmachash = await hmacSHA256('Hello HMAC', macKey);
+      console.log('HMAC-SHA256:', hmachash);
+    } catch (err) {
+      console.log('error is', err);
+    }
+  };
+
+  const base64 = async () => {
+    try {
+      console.log('--- Base64 Encoding/Decoding ---');
+      const base64Encoded = await base64Encode('Hello Base64 Encoding');
+      console.log('Base64 Encoded:', base64Encoded);
+
+      const base64Decoded =await base64Decode(base64Encoded);
+      console.log('Base64 Decoded:', base64Decoded);
+    } catch (err) {
+      console.log('error is', err);
+    }
+  };
+
+  const createRandomString = async () => {
+    try {
+      console.log('--- Utilities ---');
+      const randomString = await generateRandomString(16);
+      console.log('Random String:', randomString);
+    } catch (err) {
+      console.log('error is', err);
+    }
+  };
+
+  const signData = async () => {
+    const keyPair = await generateECDSAKeyPair();
+    const data = 'Hello, ECDSA!';
+    const signature = await signDataECDSA(data, keyPair.privateKey);
+    const isValid = await verifySignatureECDSA(data, signature, keyPair.publicKey);
+
+    console.log('Signature:', signature);
+    console.log('Is Valid Signature:', isValid);
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.header}>Dynamic Routing Example</Text>
+      <Button title="Encrypt & Decrypt AES" onPress={handleAESEncryption} />
+      <Button title="Encrypt & Decrypt RSA" onPress={handleAsyncRSAEncryption} />
+      <Button title="Sign data" onPress={signData} />
+      <Button title="Hashing" onPress={hashing} />
+      <Button title="HMAC" onPress={hmac} />
+      <Button title="Base64 Encoding" onPress={base64} />
+      <Button title="Generate random" onPress={createRandomString} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+    justifyContent: 'center',
+    backgroundColor: '#f4f4f4',
+  },
+  header: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  item: {
+    padding: 16,
+    marginVertical: 8,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  text: {
+    fontSize: 16,
+  },
+});
+```
+
+# **Keychain Integration for keys**
+ - **Key Storage:** It is recommended to save encryption keys in Keychain (iOS) and Keystore (Android) for enhanced security.
+ - **Example Implementation:** You can refer to an example in this repository for guidance.
+ - **Customization:** The provided example serves as a sample implementation and can be modified according to specific requirements.
 
 ---
 
-## 🐞 **7. Troubleshooting**
+## 🐞 **8. Troubleshooting**
 
 1. **Library Not Found:**  
    - Run `npx react-native link rn-encryption`.
@@ -459,7 +620,7 @@ const styles = StyleSheet.create({
 
 ---
 
-## ✅ **8. Best Practices**
+## ✅ **9. Best Practices**
 
 1. **Do Not Hardcode Keys:** Use `.env` or secure storage for keys.
 2. **Handle Errors Gracefully:** Wrap calls in `try-catch` blocks.
@@ -467,7 +628,7 @@ const styles = StyleSheet.create({
 
 ---
 
-## ❓ **9. FAQ**
+## ❓ **10. FAQ**
 
 **Q: Does the library support both Android and iOS?**  
 A: Partially, `rn-encryption` fully supports ios and encryptAES & decryptAES for Android platforms.
@@ -480,7 +641,7 @@ A: Add console logs and verify that keys and data are correctly passed.
 
 ---
 
-##  **10. Security Best Practices**
+##  **11. Security Best Practices**
 
 1. Use Strong Keys: Always use AES-256 for symmetric encryption and RSA-2048 for asymmetric encryption.
 2. Key Storage: Store keys securely using Android Keystore and iOS Keychain.

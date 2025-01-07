@@ -1,6 +1,6 @@
 {
   "name": "rn-encryption",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Encryption",
   "source": "./src/index.tsx",
   "main": "./lib/commonjs/index.js",
@@ -48,7 +48,25 @@
   "keywords": [
     "react-native",
     "ios",
-    "android"
+    "android",
+    "web",
+    "encryption",
+    "AES encryption",
+    "RSA encryption",
+    "Hashing",
+    "base64",
+    "turbo modules",
+    "native encryption",
+    "crypto",
+    "security",
+    "HMAC",
+    "ECDSA",
+    "react-native-security",
+    "cross-platform-encryption",
+    "data-protection",
+    "react-native-encryption",
+    "react-native-crypto",
+    "typescript-encryption"
   ],
   "repository": {
     "type": "git",
@@ -187,5 +205,8 @@
     "type": "turbo-module",
     "languages": "kotlin-objc",
     "version": "0.45.5"
+  },
+  "dependencies": {
+    "web-secure-encryption": "^1.0.2"
   }
 }
