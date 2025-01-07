@@ -3,6 +3,8 @@ import android.util.Base64
 import kotlin.math.roundToInt
 import java.security.*
 import javax.crypto.spec.SecretKeySpec
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
 
 
 object HashingUtils {
@@ -51,8 +53,32 @@ object HashingUtils {
         }
 
         // -----------------------------------------
-        // 📝 HMAC-SHA256
+        // 📝 HMAC-SHA256/512
         // -----------------------------------------
+
+        /**
+ * Generate HMAC Key for SHA-256 or SHA-512.
+ * @param keySize Size of the key in bits (256 or 512).
+ * @return Base64-encoded HMAC key.
+ * @throws IllegalArgumentException If the key size is invalid.
+ */
+@Throws(IllegalArgumentException::class)
+fun generateHMACKey(keySize: Double): String {
+    // Validate key size
+    // val validSizes = listOf(256, 512)
+   //  if (keySize !in validSizes) {
+     //    throw IllegalArgumentException("Invalid key size. Supported sizes: 256.0, 512.0 bits")
+   //  }
+
+    // Convert Double to Int for byte array size
+    val keyBytes = ByteArray((keySize / 8).toInt()) // Convert bits to bytes
+
+    // Generate random key bytes
+    SecureRandom().nextBytes(keyBytes)
+
+    // Encode the key as Base64 for storage/transfer
+    return Base64.encodeToString(keyBytes, Base64.DEFAULT)
+}
 
         /**
          * Hashes data using hmac SHA-256.
@@ -66,6 +92,25 @@ object HashingUtils {
         fun hmacSHA256(data: String, key: String): String {
             val secretKey = SecretKeySpec(key.toByteArray(), "HmacSHA256")
             val mac = Mac.getInstance("HmacSHA256")
+            mac.init(secretKey)
+            val hash = mac.doFinal(data.toByteArray())
+            return hash.joinToString("") {
+                "%02x".format(it)
+            }
+        }
+
+        /**
+         * Hashes data using hmac SHA-256.
+         *
+         * @param data The input string to hash.
+         * @param key The input key to be used for hash.
+         * @return A hex-encoded hmac SHA-256 hash.
+         * @throws Exception if hashing fails.
+         */
+        @Throws(Exception::class)
+        fun hmacSHA512(data: String, key: String): String {
+            val secretKey = SecretKeySpec(key.toByteArray(), "HmacSHA512")
+            val mac = Mac.getInstance("HmacSHA512")
             mac.init(secretKey)
             val hash = mac.doFinal(data.toByteArray())
             return hash.joinToString("") {

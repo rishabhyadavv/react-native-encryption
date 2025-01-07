@@ -56,19 +56,30 @@ public class CryptoUtility: NSObject {
     /// - Parameters:
     ///   - keySize: Size of the key i.e 128,192, or 256.
     /// - Returns: Base64-encoded encrypted string or nil on failure.
-    @objc public func generateAESKey(_ keySize: Int) -> String {
+    @objc public func generateAESKey(_ keySize: Int,errorObj: NSErrorPointer) -> String? {
         let key: SymmetricKey
-        
-        switch keySize {
-        case 128:
-            key = SymmetricKey(size: .bits128)
-        case 192:
-            key = SymmetricKey(size: .bits192)
-        case 256:
-            key = SymmetricKey(size: .bits256)
-        default:
-            fatalError("Invalid AES key size. Must be 128, 192, or 256 bits.")
+        do {
+            switch keySize {
+            case 128:
+                key = SymmetricKey(size: .bits128)
+            case 192:
+                key = SymmetricKey(size: .bits192)
+            case 256:
+                key = SymmetricKey(size: .bits256)
+            default:
+                throw EncryptionError.invalidKeyLength
+            }
+        } catch {
+            errorObj?.pointee = NSError(
+                domain: "CryptoUtility",
+                code: -1,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "encryptionError.localizedDescription"
+                ]
+            )
+            return nil
         }
+       
         
         let keyData = key.withUnsafeBytes { Data(Array($0)) }
         return keyData.base64EncodedString()
@@ -362,6 +373,63 @@ public class CryptoUtility: NSObject {
             }
         }
     
+    
+    /// Retrieve the Public Key from a given Private Key (Base64 Encoded)
+    /// - Parameters:
+    ///   - privateKeyBase64: Base64-encoded RSA private key.
+    ///   - errorObj: NSErrorPointer for capturing errors.
+    /// - Returns: Base64-encoded RSA public key or nil on failure.
+    @objc public func getPublicRSAkey(_ privateKeyBase64: String, errorObj: NSErrorPointer) -> String? {
+        do {
+            // Decode the Base64-encoded Private Key
+            guard let privateKeyData = Data(base64Encoded: privateKeyBase64) else {
+                throw EncryptionError.invalidKey
+            }
+            
+            // Create SecKey from Private Key Data
+            let attributes: [String: Any] = [
+                kSecAttrKeyType as String: kSecAttrKeyTypeRSA,
+                kSecAttrKeyClass as String: kSecAttrKeyClassPrivate,
+                kSecAttrKeySizeInBits as String: 2048
+            ]
+            
+            var error: Unmanaged<CFError>?
+            guard let privateKey = SecKeyCreateWithData(privateKeyData as CFData,
+                                                        attributes as CFDictionary,
+                                                        &error) else {
+                throw error?.takeRetainedValue() ?? EncryptionError.keyCreationFailed
+            }
+            
+            // Extract Public Key from Private Key
+            guard let publicKey = SecKeyCopyPublicKey(privateKey) else {
+                throw EncryptionError.publicKeyExportFailed
+            }
+            
+            // Export Public Key as Data
+            guard let publicKeyData = SecKeyCopyExternalRepresentation(publicKey, &error) as Data? else {
+                throw error?.takeRetainedValue() ?? EncryptionError.publicKeyExportFailed
+            }
+            
+            // Return Base64-encoded Public Key
+            return publicKeyData.base64EncodedString()
+            
+        } catch let encryptionError as EncryptionError {
+            errorObj?.pointee = NSError(
+                domain: "CryptoUtility",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: encryptionError.localizedDescription]
+            )
+            return nil
+        } catch {
+            errorObj?.pointee = NSError(
+                domain: "CryptoUtility",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "An unknown error occurred while extracting the public key."]
+            )
+            return nil
+        }
+    }
+    
     @objc public func generateRSAKeyPair(_ errorObj: NSErrorPointer) -> NSDictionary? {
             do {
                 let keySize = 2048
@@ -500,15 +568,27 @@ public class CryptoUtility: NSObject {
         return digest.map { String(format: "%02x", $0) }.joined()
     }
     
-    // MARK: - HMAC (SHA256)
-    
-    /// Create base64 string using hmacSHA256 .
+    /// Generate an HMAC key for SHA-256 or SHA-512.
     /// - Parameters:
-    ///   - data: Plain text string to be encrypted.
-    ///   - key: Base64-encoded   key.
+    ///   - keySize: Desired key size in bits (256 or 512).
+    /// - Returns: Base64-encoded key string.
+    /// - Throws: EncryptionError if key size is invalid.
+    @objc public func generateHMACKey(_ keySize: Int) -> String {
+        let key = SymmetricKey(size: .bits256) // Default 256 bits
+        let keyData = key.withUnsafeBytes { Data(Array($0)) }
+        return keyData.base64EncodedString()
+    }
+    
+    // MARK: - HMAC (SHA256/SHA512)
+
+    /// Generate HMAC hash using specified hash algorithm.
+    /// - Parameters:
+    ///   - data: Plain text string to be hashed.
+    ///   - key: Base64-encoded key.
+    ///   - algorithm: Specify either "SHA256" or "SHA512".
     ///   - errorObj: NSErrorPointer for capturing errors.
-    /// - Returns: Base64-encoded encrypted string or nil on failure.
-    @objc public func hmacSHA256(_ data: String, key: String, errorObj:NSErrorPointer) -> String? {
+    /// - Returns: HMAC hash string or nil on failure.
+    @objc public func hmac(_ data: String, key: String, algorithm: String, errorObj: NSErrorPointer) -> String? {
         do {
             // Decode the Base64 key
             guard let keyData = key.data(using: .utf8) else {
@@ -521,13 +601,24 @@ public class CryptoUtility: NSObject {
             // Convert the input data to bytes
             let dataBytes = Data(data.utf8)
             
-            // Generate HMAC
-            let authenticationCode = HMAC<SHA256>.authenticationCode(for: dataBytes, using: symmetricKey)
+            let hmacString: String
             
-            // Convert to hex string
-            let hmacString = authenticationCode.map { String(format: "%02x", $0) }.joined()
+            switch algorithm.uppercased() {
+            case "SHA256":
+                let authenticationCode = HMAC<SHA256>.authenticationCode(for: dataBytes, using: symmetricKey)
+                hmacString = authenticationCode.map { String(format: "%02x", $0) }.joined()
+            
+            case "SHA512":
+                let authenticationCode = HMAC<SHA512>.authenticationCode(for: dataBytes, using: symmetricKey)
+                hmacString = authenticationCode.map { String(format: "%02x", $0) }.joined()
+            
+            default:
+                throw EncryptionError.invalidKey
+            }
+            
             return hmacString
-        }  catch let encryptionError as EncryptionError {
+            
+        } catch let encryptionError as EncryptionError {
             errorObj?.pointee = NSError(
                 domain: "CryptoUtility",
                 code: -1,
@@ -541,7 +632,7 @@ public class CryptoUtility: NSObject {
                 domain: "CryptoUtility",
                 code: -1,
                 userInfo: [
-                    NSLocalizedDescriptionKey: "Unknown error ocuured"
+                    NSLocalizedDescriptionKey: "An unknown error occurred."
                 ]
             )
             return nil
@@ -641,6 +732,38 @@ public class CryptoUtility: NSObject {
             "publicKey": publicKeyData,
             "privateKey": privateKeyData
         ]
+    }
+    
+    @objc public func getPublicECDSAKey(_ privateKeyBase64: String, errorObj: NSErrorPointer) -> String? {
+        do {
+            // Decode the Base64-encoded private key
+            guard let privateKeyData = Data(base64Encoded: privateKeyBase64) else {
+                throw EncryptionError.invalidKey
+            }
+            
+            // Reconstruct the private key
+            let privateKey = try P256.Signing.PrivateKey(rawRepresentation: privateKeyData)
+            
+            // Extract the public key
+            let publicKey = privateKey.publicKey
+            
+            // Return the Base64-encoded public key
+            return publicKey.rawRepresentation.base64EncodedString()
+        } catch let encryptionError as EncryptionError {
+            errorObj?.pointee = NSError(
+                domain: "CryptoUtility",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: encryptionError.localizedDescription]
+            )
+            return nil
+        } catch {
+            errorObj?.pointee = NSError(
+                domain: "CryptoUtility",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to extract public key from private key."]
+            )
+            return nil
+        }
     }
     
     // MARK: - Sign Data using ECDSA

@@ -12,7 +12,8 @@
   "dependencies": {
     "react": "18.3.1",
     "react-native": "0.76.5",
-    "react-native-fs": "^2.20.0"
+    "react-native-fs": "^2.20.0",
+    "react-native-keychain": "^9.2.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

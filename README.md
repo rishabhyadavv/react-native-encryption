@@ -86,7 +86,9 @@ import {
   encryptAsyncAES,
   decryptAsyncAES,
   encryptAsyncRSA,
-  decryptAsyncRSA
+  decryptAsyncRSA,
+  encryptFile,
+  decryptFile,
 } from 'rn-encryption';;
 ```
 
@@ -291,8 +293,12 @@ const decryptedPath = `${RNFS.DocumentDirectoryPath}/data-decrypted.txt`;
   const hmac = () => {
     try {
       console.log('--- HMAC ---');
-      const hmachash = hmacSHA256('Hello HMAC', 'MyHMACKey');
-      console.log('HMAC-SHA256:', hmachash);
+      const hmackey = generateHMACKey(256);
+      const hmachash = hmacSHA256('Hello HMAC', hmackey);
+
+      const hmackey512 = generateHMACKey(512);
+      const hmachash512 = hmacSHA256('Hello HMAC', hmackey512);
+      console.log('HMAC-SHA256:', hmachash, hmachash512);
     } catch (err) {
       console.log('error is', err);
     }
@@ -430,6 +436,9 @@ const styles = StyleSheet.create({
 });
 
 ```
+
+# ** Keychain Integration for keys**
+ - It is recommended to save keys in Keychain only. You can refer example in this repo. This is anb sample and can be modified according to the requirements.
 
 ---
 

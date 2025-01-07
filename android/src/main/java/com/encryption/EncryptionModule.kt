@@ -9,8 +9,11 @@ import javax.crypto.spec.IvParameterSpec
 import java.security.*
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
+import java.security.spec.RSAPublicKeySpec
+
 import android.util.Base64
 import javax.crypto.Cipher
+import java.math.BigInteger
 
 import java.security.KeyFactory
 import kotlinx.coroutines.*
@@ -211,7 +214,7 @@ override fun decryptFile(inputPath: String, key: String, promise: Promise) {
 }
 
         // -----------------------------------------
-        // 🔑 AES Key Generation
+        // 🔑 RSA Key Generation
         // -----------------------------------------
 
         /**
@@ -221,33 +224,73 @@ override fun decryptFile(inputPath: String, key: String, promise: Promise) {
          * @throws Exception if key generation fails.
          */
         @Throws(Exception::class)
-        override fun generateRSAKeyPair(): WritableMap {
-            return try {
-                // Generate RSA Key Pair
-                val keyPairGenerator = KeyPairGenerator.getInstance("RSA")
-                keyPairGenerator.initialize(2048)
-                val keyPair = keyPairGenerator.genKeyPair()
+       override fun generateRSAKeyPair(): WritableMap {
+    try {
+        // Generate RSA Key Pair
+        val keyPairGenerator = KeyPairGenerator.getInstance("RSA")
+        keyPairGenerator.initialize(2048)
+        val keyPair: KeyPair = keyPairGenerator.genKeyPair()
 
-                // Get keys and encode them as Base64
-                val publicKey = keyPair.public.encoded
-                val privateKey = keyPair.private.encoded
+        // Extract Public and Private Key
+        val publicKey = keyPair.public
+        val privateKey = keyPair.private
 
-                val publicKeyBase64 = Base64.encodeToString(publicKey, Base64.DEFAULT)
-                val privateKeyBase64 = Base64.encodeToString(privateKey, Base64.DEFAULT)
+        // Encode Keys to Base64
+        val publicKeyBytes = publicKey.encoded
+        val privateKeyBytes = privateKey.encoded
 
-                // Create WritableMap
-                val result: WritableMap = Arguments.createMap()
-                result.putString("publicKey", publicKeyBase64)
-                result.putString("privateKey", privateKeyBase64)
+        val publicKeyBase64 = Base64.encodeToString(publicKeyBytes, Base64.DEFAULT)
+        val privateKeyBase64 = Base64.encodeToString(privateKeyBytes, Base64.DEFAULT)
 
-                result
-            } catch (e: Exception) {
-                e.printStackTrace()
-                val errorMap: WritableMap = Arguments.createMap()
-                errorMap.putString("error", "Failed to generate RSA key pair: ${e.localizedMessage}")
-                errorMap
-            }
-        }
+        // Return as WritableMap
+        val result: WritableMap = Arguments.createMap()
+        result.putString("publicKey", publicKeyBase64)
+        result.putString("privateKey", privateKeyBase64)
+
+        return result
+    } catch (e: Exception) {
+        e.printStackTrace()
+        throw Exception("Failed to generate RSA key pair: ${e.localizedMessage}")
+    }
+}
+
+        /**
+ * Retrieve the Public Key from a given Private Key (Base64 Encoded)
+ * @param privateKeyBase64 Base64-encoded RSA private key.
+ * @return Base64-encoded RSA public key or null on failure.
+ * @throws IllegalArgumentException if the key is invalid.
+ * @throws Exception for general key-related errors.
+ */
+@Throws(IllegalArgumentException::class, Exception::class)
+override fun getPublicRSAkey(privateKeyBase64: String): String {
+    try {
+       // Decode the Base64-encoded private key
+        val privateKeyBytes = Base64.decode(privateKeyBase64, Base64.DEFAULT)
+        val keySpec = PKCS8EncodedKeySpec(privateKeyBytes)
+        val keyFactory = KeyFactory.getInstance("RSA")
+
+        // Generate PrivateKey object
+        val privateKey: PrivateKey = keyFactory.generatePrivate(keySpec)
+        val rsaPrivateKey = privateKey as java.security.interfaces.RSAPrivateKey
+
+        // Extract Modulus and Public Exponent
+        val modulus: BigInteger = rsaPrivateKey.modulus
+        val publicExponent: BigInteger = BigInteger.valueOf(65537) // Common RSA exponent
+
+        // Generate PublicKey from Modulus and Public Exponent
+        val publicKeySpec = RSAPublicKeySpec(modulus, publicExponent)
+        val publicKey: PublicKey = keyFactory.generatePublic(publicKeySpec)
+
+        // Encode PublicKey to Base64
+        val publicKeyBase64 = Base64.encodeToString(publicKey.encoded, Base64.DEFAULT)
+        return publicKeyBase64
+
+    } catch (e: IllegalArgumentException) {
+        throw IllegalArgumentException("Invalid private key format: ${e.localizedMessage}")
+    } catch (e: Exception) {
+        throw Exception("Failed to extract public key: ${e.localizedMessage}")
+    }
+}
 
         // -----------------------------------------
         // 🔒 RSA Encryption
@@ -394,9 +437,19 @@ override fun decryptFile(inputPath: String, key: String, promise: Promise) {
         }
 
         // -----------------------------------------
-        // 📝 HMAC-SHA256
+        // 📝 HMAC-SHA256/512
         // -----------------------------------------
 
+                /**
+ * Generate HMAC Key for SHA-256 or SHA-512.
+ * @param keySize Size of the key in bits (256 or 512).
+ * @return Base64-encoded HMAC key.
+ * @throws IllegalArgumentException If the key size is invalid.
+ */
+@Throws(IllegalArgumentException::class)
+override fun generateHMACKey(keySize: Double): String {
+    return HashingUtils.generateHMACKey(keySize)
+}
         /**
          * Hashes data using hmac SHA-256.
          *
@@ -409,6 +462,20 @@ override fun decryptFile(inputPath: String, key: String, promise: Promise) {
         override fun hmacSHA256(data: String, key: String): String {
            return HashingUtils.hmacSHA256(data, key)
         }
+
+         /**
+         * Hashes data using hmac SHA-512.
+         *
+         * @param data The input string to hash.
+         * @param key The input key to be used for hash.
+         * @return A hex-encoded hmac SHA-256 hash.
+         * @throws Exception if hashing fails.
+         */
+        @Throws(Exception::class)
+        override fun hmacSHA512(data: String, key: String): String {
+           return HashingUtils.hmacSHA512(data, key)
+        }
+
 
         // -----------------------------------------
         // 🎲 Random String Generation
@@ -464,6 +531,12 @@ override fun decryptFile(inputPath: String, key: String, promise: Promise) {
         override fun generateECDSAKeyPair(): WritableMap {
             return SignatureUtils.generateECDSAKeyPair()
         }
+
+        @Throws(Exception::class)
+        override fun getPublicECDSAKey(privateKeyBase64: String): String { 
+            return SignatureUtils.getPublicECDSAKey(privateKeyBase64)
+        }
+        
 
         /**
          * Signs a given string using ECDSA (Elliptic Curve Digital Signature Algorithm).

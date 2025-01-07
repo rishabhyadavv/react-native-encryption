@@ -17,7 +17,23 @@ RCT_EXPORT_MODULE()
 }
 
 - (NSString *)generateAESKey:(double)keySize {
-    return  [cryptoUtil generateAESKey:keySize];
+    
+    NSError *error = nil;
+    NSString *aeskey = [cryptoUtil generateAESKey:keySize errorObj:&error];
+    
+    if (error) {
+        @throw [NSException exceptionWithName:@"EncryptionError"
+                                       reason:error.localizedDescription
+                                     userInfo:nil];
+    } else {
+        return aeskey;
+    }
+}
+
+
+- (NSString *)generateHmacKey:(double)keySize {
+    
+    return [cryptoUtil generateHMACKey:keySize];
 }
 
 #pragma mark - AES Encryption and Decryption
@@ -46,6 +62,20 @@ RCT_EXPORT_MODULE()
         return keyPairs;
     }
     
+}
+
+- (NSString *)getPublicECDSAKey:(NSString *)privateRSAkey {
+    
+    NSError *error = nil;
+    NSString *publicRSAKey = [cryptoUtil getPublicECDSAKey:privateRSAkey errorObj:&error];
+    
+    if (error) {
+        @throw [NSException exceptionWithName:@"EncryptionError"
+                                       reason:error.localizedDescription
+                                     userInfo:nil];
+    } else {
+        return publicRSAKey;
+    }
 }
 
 - (NSString *)signDataECDSA:(NSString *)data key:(NSString *)key {
@@ -258,6 +288,21 @@ RCT_EXPORT_MODULE()
     
 }
 
+
+- (NSString *)getPublicRSAkey:(NSString *)privateRSAkey {
+    
+    NSError *error = nil;
+    NSString *publicRSAKey = [cryptoUtil getPublicRSAkey:privateRSAkey errorObj:&error];
+    
+    if (error) {
+        @throw [NSException exceptionWithName:@"EncryptionError"
+                                       reason:error.localizedDescription
+                                     userInfo:nil];
+    } else {
+        return publicRSAKey;
+    }
+}
+
 - (NSString *)encryptRSA:(NSString *)data publicKey:(NSString *)publicKey {
     NSError *error = nil;
     NSString *encryptedString = [cryptoUtil encryptRSA:data publicKeyBase64:publicKey errorObj:&error];
@@ -379,7 +424,23 @@ RCT_EXPORT_MODULE()
 // HMAC-SHA256
 - (NSString *)hmacSHA256:(NSString *)data key:(NSString *)key {
     NSError *error = nil;
-    NSString *encryptedString = [cryptoUtil hmacSHA256:data key:key errorObj:&error];
+    NSString *encryptedString = [cryptoUtil hmac:data key:key algorithm:@"SHA256"  errorObj:&error];
+    
+    if (error) {
+        @throw [NSException exceptionWithName:@"EncryptionError"
+                                       reason:error.localizedDescription
+                                     userInfo:nil];
+    } else {
+        return encryptedString;
+    }
+}
+
+#pragma mark - HMAC
+
+// HMAC-SHA256
+- (NSString *)hmacSHA512:(NSString *)data key:(NSString *)key {
+    NSError *error = nil;
+    NSString *encryptedString = [cryptoUtil hmac:data key:key algorithm:@"SHA512"  errorObj:&error];
     
     if (error) {
         @throw [NSException exceptionWithName:@"EncryptionError"

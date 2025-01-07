@@ -22,7 +22,8 @@ import {
   decryptAsyncRSA,
   encryptFile,
   decryptFile,
-} from 'rn-encryption';
+  generateHMACKey,
+} from '../../src';
 import RNFS from 'react-native-fs';
 
 interface EncryptionError {
@@ -152,8 +153,12 @@ export default function DashboardScreen() {
   const hmac = () => {
     try {
       console.log('--- HMAC ---');
-      const hmachash = hmacSHA256('Hello HMAC', 'MyHMACKey');
-      console.log('HMAC-SHA256:', hmachash);
+      const hmackey = generateHMACKey(256);
+      const hmachash = hmacSHA256('Hello HMAC', hmackey);
+
+      const hmackey512 = generateHMACKey(512);
+      const hmachash512 = hmacSHA256('Hello HMAC', hmackey512);
+      console.log('HMAC-SHA256:', hmachash, hmachash512);
     } catch (err) {
       console.log('error is', err);
     }
