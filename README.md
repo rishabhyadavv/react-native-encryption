@@ -28,7 +28,7 @@ This guide explains how to directly access methods from the `rn-encryption` libr
 Install the library using npm or yarn:
 
 ```bash
-expo install @yourorg/native-encryption
+expo install rn-encryption
 
 # OR
 npm install rn-encryption --save
