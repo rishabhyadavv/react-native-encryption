@@ -6,7 +6,7 @@
   "main": "./lib/commonjs/index.js",
   "module": "./lib/module/index.js",
   "expo": {
-    "plugin": "plugin/withEncryption"
+     "plugin": "./plugin/withEncryption.js"
   },
   "exports": {
     ".": {
