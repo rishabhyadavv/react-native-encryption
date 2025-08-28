@@ -1,6 +1,6 @@
 {
   "name": "rn-encryption",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Encryption",
   "source": "./src/index.tsx",
   "main": "./lib/commonjs/index.js",
@@ -24,6 +24,7 @@
     "src",
     "lib",
     "android",
+    "plugin",
     "ios",
     "cpp",
     "*.podspec",
