@@ -20,30 +20,23 @@ Pod::Spec.new do |s|
   # Swift configuration
   s.swift_version = "5.0"
   
-  # Base Swift configuration for all cases
-  base_swift_config = {
-    "DEFINES_MODULE" => "YES",
-    "SWIFT_COMPILATION_MODE" => "wholemodule",
-    "HEADER_SEARCH_PATHS" => "\"$(PODS_TARGET_SRCROOT)/ios\" \"$(PODS_CONFIGURATION_BUILD_DIR)/react-native-encryption\""
-  }
-  
   # Use install_modules_dependencies helper to install the dependencies if React Native version >=0.71.0.
   # See https://github.com/facebook/react-native/blob/febf6b7f33fdb4904669f99d795eba4c0f95d7bf/scripts/cocoapods/new_architecture.rb#L79.
   if respond_to?(:install_modules_dependencies, true)
     install_modules_dependencies(s)
-    # Merge Swift configuration after install_modules_dependencies
-    s.pod_target_xcconfig = (s.pod_target_xcconfig || {}).merge(base_swift_config)
   else
     s.dependency "React-Core"
 
     # Don't install the dependencies when we run `pod install` in the old architecture.
     if ENV['RCT_NEW_ARCH_ENABLED'] == '1' then
       s.compiler_flags = folly_compiler_flags + " -DRCT_NEW_ARCH_ENABLED=1"
-      s.pod_target_xcconfig = base_swift_config.merge({
+      s.pod_target_xcconfig    = {
           "HEADER_SEARCH_PATHS" => "\"$(PODS_ROOT)/boost\" \"$(PODS_TARGET_SRCROOT)/ios\" \"$(PODS_CONFIGURATION_BUILD_DIR)/react-native-encryption\"",
           "OTHER_CPLUSPLUSFLAGS" => "-DFOLLY_NO_CONFIG -DFOLLY_MOBILE=1 -DFOLLY_USE_LIBCPP=1",
-          "CLANG_CXX_LANGUAGE_STANDARD" => "c++17"
-      })
+          "CLANG_CXX_LANGUAGE_STANDARD" => "c++17",
+          "DEFINES_MODULE" => "YES",
+          "SWIFT_COMPILATION_MODE" => "wholemodule"
+      }
       s.dependency "React-Codegen"
       s.dependency "RCT-Folly"
       s.dependency "RCTRequired"
@@ -51,7 +44,11 @@ Pod::Spec.new do |s|
       s.dependency "ReactCommon/turbomodule/core"
     else
       # Old architecture configuration
-      s.pod_target_xcconfig = base_swift_config
+      s.pod_target_xcconfig = {
+        "DEFINES_MODULE" => "YES",
+        "SWIFT_COMPILATION_MODE" => "wholemodule",
+        "HEADER_SEARCH_PATHS" => "\"$(PODS_TARGET_SRCROOT)/ios\" \"$(PODS_CONFIGURATION_BUILD_DIR)/react-native-encryption\""
+      }
     end
   end
 end
