@@ -19,11 +19,23 @@ Pod::Spec.new do |s|
   
   # Swift configuration
   s.swift_version = "5.0"
+  # Explicitly set module name to ensure Swift bridging header is generated correctly
+  s.module_name = "react_native_encryption"
+  
+  # Configure Swift bridging header settings before install_modules_dependencies
+  # This ensures the settings are applied correctly
+  swift_header_config = {
+    "DEFINES_MODULE" => "YES",
+    "SWIFT_COMPILATION_MODE" => "wholemodule",
+    "HEADER_SEARCH_PATHS" => "\"$(PODS_TARGET_SRCROOT)/ios\" \"$(PODS_CONFIGURATION_BUILD_DIR)/react-native-encryption\" \"$(CONFIGURATION_BUILD_DIR)/react-native-encryption\" \"$(DERIVED_FILE_DIR)\""
+  }
   
   # Use install_modules_dependencies helper to install the dependencies if React Native version >=0.71.0.
   # See https://github.com/facebook/react-native/blob/febf6b7f33fdb4904669f99d795eba4c0f95d7bf/scripts/cocoapods/new_architecture.rb#L79.
   if respond_to?(:install_modules_dependencies, true)
     install_modules_dependencies(s)
+    # Note: We cannot set pod_target_xcconfig after install_modules_dependencies
+    # The Swift version and module_name settings should be sufficient for bridging header generation
   else
     s.dependency "React-Core"
 
