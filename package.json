@@ -1,12 +1,12 @@
 {
   "name": "rn-encryption",
-  "version": "3.0.2",
+  "version": "3.0.4",
   "description": "Encryption",
   "source": "./src/index.tsx",
   "main": "./lib/commonjs/index.js",
   "module": "./lib/module/index.js",
   "expo": {
-     "plugin": "./plugin/withEncryption.js"
+    "plugin": "./plugin/withEncryption.js"
   },
   "exports": {
     ".": {
