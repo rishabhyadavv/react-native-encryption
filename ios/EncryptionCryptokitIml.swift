@@ -325,34 +325,38 @@ public class CryptoUtility: NSObject {
 
         
         // MARK: - RSA Encryption
-        
+
         /// Encrypts a string using RSA with a Base64 public key.
         /// - Parameters:
         ///   - data: Plain text string to be encrypted.
         ///   - publicKeyBase64: Base64-encoded RSA public key.
+        ///   - padding: The padding scheme to use: "PKCS1" or "OAEP".
         ///   - errorObj: NSErrorPointer for capturing errors.
         /// - Returns: Base64-encoded encrypted string or nil on failure.
-        @objc public func encryptRSA(_ data: String, publicKeyBase64: String, errorObj: NSErrorPointer) -> String? {
+        @objc public func encryptRSA(_ data: String, publicKeyBase64: String, padding: String, errorObj: NSErrorPointer) -> String? {
             do {
                 // Create Public Key from Base64 String
                 let publicKey = try constructSecKey(from: publicKeyBase64, isPublicKey: true)
-                
+
                 // Validate Data
                 guard let dataToEncrypt = data.data(using: .utf8) else {
                     throw EncryptionError.invalidData
                 }
-                
+
+                // Select algorithm based on padding
+                let algorithm: SecKeyAlgorithm = padding == "OAEP" ? .rsaEncryptionOAEPSHA256 : .rsaEncryptionPKCS1
+
                 // Encrypt Data using RSA
                 var error: Unmanaged<CFError>?
                 guard let encryptedData = SecKeyCreateEncryptedData(
                     publicKey,
-                    .rsaEncryptionPKCS1,
+                    algorithm,
                     dataToEncrypt as CFData,
                     &error
                 ) as Data? else {
                     throw error?.takeRetainedValue() ?? EncryptionError.encryptionFailed
                 }
-                
+
                 return encryptedData.base64EncodedString()
             } catch let encryptionError as EncryptionError {
                 errorObj?.pointee = NSError(
@@ -493,39 +497,43 @@ public class CryptoUtility: NSObject {
         }
         
         // MARK: - RSA Decryption
-        
+
         /// Decrypts a Base64-encoded string using RSA with a Base64 private key.
         /// - Parameters:
         ///   - data: Base64-encoded encrypted string.
         ///   - privateKeyBase64: Base64-encoded RSA private key.
+        ///   - padding: The padding scheme to use: "PKCS1" or "OAEP".
         ///   - errorObj: NSErrorPointer for capturing errors.
         /// - Returns: Decrypted plain text string or nil on failure.
-        @objc public func decryptRSA(_ data: String, privateKeyBase64: String, errorObj: NSErrorPointer) -> String? {
+        @objc public func decryptRSA(_ data: String, privateKeyBase64: String, padding: String, errorObj: NSErrorPointer) -> String? {
             do {
                 // Create Private Key from Base64 String
                 let privateKey = try constructSecKey(from: privateKeyBase64, isPublicKey: false)
-                
+
                 // Validate Base64 Data
                 guard let encryptedData = Data(base64Encoded: data) else {
                     throw EncryptionError.invalidBase64
                 }
-                
+
+                // Select algorithm based on padding
+                let algorithm: SecKeyAlgorithm = padding == "OAEP" ? .rsaEncryptionOAEPSHA256 : .rsaEncryptionPKCS1
+
                 // Decrypt Data using RSA
                 var error: Unmanaged<CFError>?
                 guard let decryptedData = SecKeyCreateDecryptedData(
                     privateKey,
-                    .rsaEncryptionPKCS1,
+                    algorithm,
                     encryptedData as CFData,
                     &error
                 ) as Data? else {
                     throw error?.takeRetainedValue() ?? EncryptionError.decryptionFailed
                 }
-                
+
                 // Convert Decrypted Data to String
                 guard let decryptedString = String(data: decryptedData, encoding: .utf8) else {
                     throw EncryptionError.decryptionFailed
                 }
-                
+
                 return decryptedString
             } catch let decryptionError as EncryptionError {
                 errorObj?.pointee = NSError(

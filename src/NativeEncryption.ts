@@ -4,6 +4,9 @@ export interface keypair {
   publicKey: string;
   privateKey: string;
 }
+
+export type RSAPadding = 'PKCS1' | 'OAEP';
+
 export interface Spec extends TurboModule {
   generateAESKey(keySize: number): string;
   encryptAES(data: string, key: string): string;
@@ -19,10 +22,18 @@ export interface Spec extends TurboModule {
 
   generateRSAKeyPair(): keypair;
   getPublicRSAkey(privateRSAkey: string): string;
-  encryptRSA(data: string, publicKey: string): string;
-  decryptRSA(data: string, privateKey: string): string;
-  encryptAsyncRSA(data: string, publicKey: string): Promise<string>;
-  decryptAsyncRSA(data: string, privateKey: string): Promise<string>;
+  encryptRSA(data: string, publicKey: string, padding: string): string;
+  decryptRSA(data: string, privateKey: string, padding: string): string;
+  encryptAsyncRSA(
+    data: string,
+    publicKey: string,
+    padding: string
+  ): Promise<string>;
+  decryptAsyncRSA(
+    data: string,
+    privateKey: string,
+    padding: string
+  ): Promise<string>;
 
   hashSHA256(input: string): string;
   hashSHA512(input: string): string;

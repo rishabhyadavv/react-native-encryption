@@ -10,6 +10,9 @@ if (Platform.OS === 'web') {
   Encryption = require('./native/index');
 }
 
+// Export RSAPadding type
+export type { RSAPadding } from './NativeEncryption';
+
 // Export all encryption methods
 export const {
   generateAESKey,

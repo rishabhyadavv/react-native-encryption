@@ -301,18 +301,23 @@ override fun getPublicRSAkey(privateKeyBase64: String): String {
          *
          * @param data The plaintext to be encrypted.
          * @param publicKeyBase64 The Base64-encoded RSA public key.
+         * @param padding The padding scheme to use: "PKCS1" or "OAEP".
          * @return A Base64-encoded string with encrypted data.
          * @throws IllegalArgumentException if data or key is invalid.
          * @throws Exception if encryption fails.
          */
         @Throws(Exception::class)
-        override fun encryptRSA(data: String, publicKeyBase64: String): String ? {
+        override fun encryptRSA(data: String, publicKeyBase64: String, padding: String): String ? {
             return try {
                 val keyFactory = KeyFactory.getInstance("RSA")
                 val publicKeyBytes = Base64.decode(publicKeyBase64, Base64.DEFAULT)
                 val publicKey = keyFactory.generatePublic(X509EncodedKeySpec(publicKeyBytes))
 
-                val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
+                val cipherTransformation = when (padding) {
+                    "OAEP" -> "RSA/ECB/OAEPWithSHA-256AndMGF1Padding"
+                    else -> "RSA/ECB/PKCS1Padding"
+                }
+                val cipher = Cipher.getInstance(cipherTransformation)
                 cipher.init(Cipher.ENCRYPT_MODE, publicKey)
 
                 val encryptedData = cipher.doFinal(data.toByteArray(Charsets.UTF_8))
@@ -328,18 +333,23 @@ override fun getPublicRSAkey(privateKeyBase64: String): String {
          *
          * @param data The Base64-encoded encrypted data (including IV).
          * @param privateKeyBase64 The Base64-encoded RSA private key.
+         * @param padding The padding scheme to use: "PKCS1" or "OAEP".
          * @return The decrypted plaintext string.
          * @throws IllegalArgumentException if data or key is invalid.
          * @throws Exception if decryption fails.
          */
         @Throws(Exception::class)
-        override fun decryptRSA(data: String, privateKeyBase64: String): String ? {
+        override fun decryptRSA(data: String, privateKeyBase64: String, padding: String): String ? {
             return try {
                 val keyFactory = KeyFactory.getInstance("RSA")
                 val privateKeyBytes = Base64.decode(privateKeyBase64, Base64.DEFAULT)
                 val privateKey = keyFactory.generatePrivate(PKCS8EncodedKeySpec(privateKeyBytes))
 
-                val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
+                val cipherTransformation = when (padding) {
+                    "OAEP" -> "RSA/ECB/OAEPWithSHA-256AndMGF1Padding"
+                    else -> "RSA/ECB/PKCS1Padding"
+                }
+                val cipher = Cipher.getInstance(cipherTransformation)
                 cipher.init(Cipher.DECRYPT_MODE, privateKey)
 
                 val encryptedData = Base64.decode(data, Base64.DEFAULT)
@@ -355,19 +365,24 @@ override fun getPublicRSAkey(privateKeyBase64: String): String {
          *
          * @param data The plaintext to be encrypted.
          * @param publicKeyBase64 The Base64-encoded RSA public key.
+         * @param padding The padding scheme to use: "PKCS1" or "OAEP".
          * @return A Base64-encoded string with encrypted data.
          * @throws IllegalArgumentException if data or key is invalid.
          * @throws Exception if encryption fails.
          */
         @Throws(Exception::class)
-        override fun encryptAsyncRSA(data: String, publicKeyBase64: String,promise: Promise) {
+        override fun encryptAsyncRSA(data: String, publicKeyBase64: String, padding: String, promise: Promise) {
               coroutineScope.launch {
                  try {
                 val keyFactory = KeyFactory.getInstance("RSA")
                 val publicKeyBytes = Base64.decode(publicKeyBase64, Base64.DEFAULT)
                 val publicKey = keyFactory.generatePublic(X509EncodedKeySpec(publicKeyBytes))
 
-                val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
+                val cipherTransformation = when (padding) {
+                    "OAEP" -> "RSA/ECB/OAEPWithSHA-256AndMGF1Padding"
+                    else -> "RSA/ECB/PKCS1Padding"
+                }
+                val cipher = Cipher.getInstance(cipherTransformation)
                 cipher.init(Cipher.ENCRYPT_MODE, publicKey)
 
                   val encryptedData = cipher.doFinal(data.toByteArray(Charsets.UTF_8))
@@ -383,23 +398,28 @@ override fun getPublicRSAkey(privateKeyBase64: String): String {
          *
          * @param data The Base64-encoded encrypted data (including IV).
          * @param privateKeyBase64 The Base64-encoded RSA private key.
+         * @param padding The padding scheme to use: "PKCS1" or "OAEP".
          * @return The decrypted plaintext string.
          * @throws IllegalArgumentException if data or key is invalid.
          * @throws Exception if decryption fails.
          */
         @Throws(Exception::class)
-        override fun decryptAsyncRSA(data: String, privateKeyBase64: String,promise: Promise) {
+        override fun decryptAsyncRSA(data: String, privateKeyBase64: String, padding: String, promise: Promise) {
             coroutineScope.launch {
                  try {
                 val keyFactory = KeyFactory.getInstance("RSA")
                 val privateKeyBytes = Base64.decode(privateKeyBase64, Base64.DEFAULT)
                 val privateKey = keyFactory.generatePrivate(PKCS8EncodedKeySpec(privateKeyBytes))
 
-                val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
+                val cipherTransformation = when (padding) {
+                    "OAEP" -> "RSA/ECB/OAEPWithSHA-256AndMGF1Padding"
+                    else -> "RSA/ECB/PKCS1Padding"
+                }
+                val cipher = Cipher.getInstance(cipherTransformation)
                 cipher.init(Cipher.DECRYPT_MODE, privateKey)
 
                 val encryptedData = Base64.decode(data, Base64.DEFAULT)
-                
+
                 promise.resolve(String(cipher.doFinal(encryptedData), Charsets.UTF_8))
 
             } catch (e: Exception) {

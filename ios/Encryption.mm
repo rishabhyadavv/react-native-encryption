@@ -303,10 +303,10 @@ RCT_EXPORT_MODULE()
     }
 }
 
-- (NSString *)encryptRSA:(NSString *)data publicKey:(NSString *)publicKey {
+- (NSString *)encryptRSA:(NSString *)data publicKey:(NSString *)publicKey padding:(NSString *)padding {
     NSError *error = nil;
-    NSString *encryptedString = [cryptoUtil encryptRSA:data publicKeyBase64:publicKey errorObj:&error];
-    
+    NSString *encryptedString = [cryptoUtil encryptRSA:data publicKeyBase64:publicKey padding:padding errorObj:&error];
+
     if (error) {
         @throw [NSException exceptionWithName:@"EncryptionError"
                                        reason:error.localizedDescription
@@ -316,9 +316,9 @@ RCT_EXPORT_MODULE()
     }
 }
 
-- (void)encryptAsyncRSA:(NSString *)data publicKey:(NSString *)publicKey resolve:(RCTPromiseResolveBlock)resolve
+- (void)encryptAsyncRSA:(NSString *)data publicKey:(NSString *)publicKey padding:(NSString *)padding resolve:(RCTPromiseResolveBlock)resolve
                  reject:(RCTPromiseRejectBlock)reject {
-    
+
     __typeof(self) __weak weakSelf = self;
     // Run on a background thread to ensure it doesn't block the UI
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -327,10 +327,10 @@ RCT_EXPORT_MODULE()
             reject(@"ENCRYPTION_ERROR", @"Encryption failed: self was deallocated", nil);
             return;
         }
-        
+
         @try {
             NSError *error = nil;
-            NSString *encryptedString = [strongSelf->cryptoUtil encryptRSA:data publicKeyBase64:publicKey errorObj:&error];
+            NSString *encryptedString = [strongSelf->cryptoUtil encryptRSA:data publicKeyBase64:publicKey padding:padding errorObj:&error];
             
                                  if (error) {
                 reject(@"ENCRYPTION_ERROR", error.localizedDescription, nil);
@@ -345,7 +345,7 @@ RCT_EXPORT_MODULE()
     });
 }
 
-- (NSString *)decryptRSA:(NSString *)data privateKey:(NSString *)privateKey {
+- (NSString *)decryptRSA:(NSString *)data privateKey:(NSString *)privateKey padding:(NSString *)padding {
     if (!data || !privateKey) {
         @throw [NSException exceptionWithName:@"DecryptionError"
                                        reason:@"Invalid encrypted data or private key"
@@ -353,7 +353,7 @@ RCT_EXPORT_MODULE()
     }
     
     NSError *error = nil;
-    NSString *encryptedString = [cryptoUtil decryptRSA:data privateKeyBase64:privateKey errorObj:&error];
+    NSString *encryptedString = [cryptoUtil decryptRSA:data privateKeyBase64:privateKey padding:padding errorObj:&error];
     
     if (error) {
         @throw [NSException exceptionWithName:@"EncryptionError"
@@ -364,7 +364,7 @@ RCT_EXPORT_MODULE()
     }
 }
 
-- (void)decryptAsyncRSA:(NSString *)data privateKey:(NSString *)privateKey resolve:(RCTPromiseResolveBlock)resolve
+- (void)decryptAsyncRSA:(NSString *)data privateKey:(NSString *)privateKey padding:(NSString *)padding resolve:(RCTPromiseResolveBlock)resolve
             reject:(RCTPromiseRejectBlock)reject {
     
     __typeof(self) __weak weakSelf = self;
@@ -378,7 +378,7 @@ RCT_EXPORT_MODULE()
         
         @try {
             NSError *error = nil;
-            NSString *encryptedString = [strongSelf->cryptoUtil decryptRSA:data privateKeyBase64:privateKey errorObj:&error];
+            NSString *encryptedString = [strongSelf->cryptoUtil decryptRSA:data privateKeyBase64:privateKey padding:padding errorObj:&error];
             
             if (error) {
                 reject(@"ENCRYPTION_ERROR", error.localizedDescription, nil);

@@ -1,4 +1,6 @@
-import Encryption, { type keypair } from '../NativeEncryption';
+import Encryption, { type keypair, type RSAPadding } from '../NativeEncryption';
+
+export type { RSAPadding };
 
 export function generateAESKey(input: number): string {
   return Encryption.generateAESKey(input);
@@ -27,17 +29,33 @@ export function decryptAsyncAES(data: string, key: string): Promise<string> {
   return Encryption.decryptAsyncAES(data, key);
 }
 
-export function encryptAsyncRSA(data: string, key: string): Promise<string> {
-  return Encryption.encryptAsyncRSA(data, key);
+export function encryptAsyncRSA(
+  data: string,
+  key: string,
+  padding: RSAPadding = 'PKCS1'
+): Promise<string> {
+  return Encryption.encryptAsyncRSA(data, key, padding);
 }
-export function decryptAsyncRSA(data: string, key: string): Promise<string> {
-  return Encryption.decryptAsyncRSA(data, key);
+export function decryptAsyncRSA(
+  data: string,
+  key: string,
+  padding: RSAPadding = 'PKCS1'
+): Promise<string> {
+  return Encryption.decryptAsyncRSA(data, key, padding);
 }
-export function encryptRSA(data: string, key: string): string {
-  return Encryption.encryptRSA(data, key);
+export function encryptRSA(
+  data: string,
+  key: string,
+  padding: RSAPadding = 'PKCS1'
+): string {
+  return Encryption.encryptRSA(data, key, padding);
 }
-export function decryptRSA(data: string, key: string): string {
-  return Encryption.decryptRSA(data, key);
+export function decryptRSA(
+  data: string,
+  key: string,
+  padding: RSAPadding = 'PKCS1'
+): string {
+  return Encryption.decryptRSA(data, key, padding);
 }
 export function generateHMACKey(keySize: number): string {
   return Encryption.generateHMACKey(keySize);
