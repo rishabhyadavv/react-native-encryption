@@ -111,6 +111,10 @@ dependencies {
   //noinspection GradleDynamicVersion
   implementation "com.facebook.react:react-native:+"
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+
+  // Test dependencies
+  testImplementation "junit:junit:4.13.2"
+  testImplementation "org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version"
 }
 
 if (isNewArchitectureEnabled()) {
