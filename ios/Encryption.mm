@@ -1,6 +1,11 @@
 #import "Encryption.h"
 #import <CommonCrypto/CommonCrypto.h>
+
+#if __has_include(<react_native_encryption/react_native_encryption-Swift.h>)
+#import <react_native_encryption/react_native_encryption-Swift.h>
+#else
 #import "react_native_encryption-Swift.h"
+#endif
 
 @implementation Encryption {
     CryptoUtility *cryptoUtil;

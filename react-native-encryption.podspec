@@ -22,33 +22,38 @@ Pod::Spec.new do |s|
   # Explicitly set module name to ensure Swift bridging header is generated correctly
   s.module_name = "react_native_encryption"
   
-  # Configure Swift bridging header settings before install_modules_dependencies
-  # This ensures the settings are applied correctly
+  swift_header_search_paths = "\"$(PODS_TARGET_SRCROOT)/ios\" \"$(DERIVED_SOURCES_DIR)\" \"$(PODS_CONFIGURATION_BUILD_DIR)/react-native-encryption\" \"$(CONFIGURATION_BUILD_DIR)/react-native-encryption\""
   swift_header_config = {
     "DEFINES_MODULE" => "YES",
+    "CLANG_ENABLE_MODULES" => "YES",
+    "SWIFT_INSTALL_OBJC_HEADER" => "YES",
+    "SWIFT_OBJC_INTERFACE_HEADER_NAME" => "react_native_encryption-Swift.h",
     "SWIFT_COMPILATION_MODE" => "wholemodule",
-    "HEADER_SEARCH_PATHS" => "\"$(PODS_TARGET_SRCROOT)/ios\" \"$(PODS_CONFIGURATION_BUILD_DIR)/react-native-encryption\" \"$(CONFIGURATION_BUILD_DIR)/react-native-encryption\" \"$(DERIVED_FILE_DIR)\""
+    "HEADER_SEARCH_PATHS" => "$(inherited) #{swift_header_search_paths}"
   }
+  merge_xcconfig = lambda do |base_config, extra_config|
+    merged_config = (base_config || {}).merge(extra_config)
+    header_search_paths = [base_config && base_config["HEADER_SEARCH_PATHS"], extra_config["HEADER_SEARCH_PATHS"]].compact.join(" ")
+    merged_config["HEADER_SEARCH_PATHS"] = header_search_paths unless header_search_paths.empty?
+    merged_config
+  end
   
   # Use install_modules_dependencies helper to install the dependencies if React Native version >=0.71.0.
   # See https://github.com/facebook/react-native/blob/febf6b7f33fdb4904669f99d795eba4c0f95d7bf/scripts/cocoapods/new_architecture.rb#L79.
   if respond_to?(:install_modules_dependencies, true)
     install_modules_dependencies(s)
-    # Note: We cannot set pod_target_xcconfig after install_modules_dependencies
-    # The Swift version and module_name settings should be sufficient for bridging header generation
+    s.pod_target_xcconfig = merge_xcconfig.call(s.attributes_hash["pod_target_xcconfig"], swift_header_config)
   else
     s.dependency "React-Core"
 
     # Don't install the dependencies when we run `pod install` in the old architecture.
     if ENV['RCT_NEW_ARCH_ENABLED'] == '1' then
       s.compiler_flags = folly_compiler_flags + " -DRCT_NEW_ARCH_ENABLED=1"
-      s.pod_target_xcconfig    = {
-          "HEADER_SEARCH_PATHS" => "\"$(PODS_ROOT)/boost\" \"$(PODS_TARGET_SRCROOT)/ios\" \"$(PODS_CONFIGURATION_BUILD_DIR)/react-native-encryption\"",
+      s.pod_target_xcconfig    = merge_xcconfig.call(swift_header_config, {
+          "HEADER_SEARCH_PATHS" => "$(inherited) \"$(PODS_ROOT)/boost\"",
           "OTHER_CPLUSPLUSFLAGS" => "-DFOLLY_NO_CONFIG -DFOLLY_MOBILE=1 -DFOLLY_USE_LIBCPP=1",
-          "CLANG_CXX_LANGUAGE_STANDARD" => "c++17",
-          "DEFINES_MODULE" => "YES",
-          "SWIFT_COMPILATION_MODE" => "wholemodule"
-      }
+          "CLANG_CXX_LANGUAGE_STANDARD" => "c++17"
+      })
       s.dependency "React-Codegen"
       s.dependency "RCT-Folly"
       s.dependency "RCTRequired"
@@ -56,11 +61,7 @@ Pod::Spec.new do |s|
       s.dependency "ReactCommon/turbomodule/core"
     else
       # Old architecture configuration
-      s.pod_target_xcconfig = {
-        "DEFINES_MODULE" => "YES",
-        "SWIFT_COMPILATION_MODE" => "wholemodule",
-        "HEADER_SEARCH_PATHS" => "\"$(PODS_TARGET_SRCROOT)/ios\" \"$(PODS_CONFIGURATION_BUILD_DIR)/react-native-encryption\""
-      }
+      s.pod_target_xcconfig = swift_header_config
     end
   end
 end
