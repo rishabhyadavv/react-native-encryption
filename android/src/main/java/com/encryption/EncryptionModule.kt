@@ -306,21 +306,16 @@ override fun getPublicRSAkey(privateKeyBase64: String): String {
          * @throws Exception if encryption fails.
          */
         @Throws(Exception::class)
-        override fun encryptRSA(data: String, publicKeyBase64: String): String ? {
-            return try {
-                val keyFactory = KeyFactory.getInstance("RSA")
-                val publicKeyBytes = Base64.decode(publicKeyBase64, Base64.DEFAULT)
-                val publicKey = keyFactory.generatePublic(X509EncodedKeySpec(publicKeyBytes))
+        override fun encryptRSA(data: String, publicKeyBase64: String): String {
+            val keyFactory = KeyFactory.getInstance("RSA")
+            val publicKeyBytes = Base64.decode(publicKeyBase64, Base64.DEFAULT)
+            val publicKey = keyFactory.generatePublic(X509EncodedKeySpec(publicKeyBytes))
 
-                val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
-                cipher.init(Cipher.ENCRYPT_MODE, publicKey)
+            val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
+            cipher.init(Cipher.ENCRYPT_MODE, publicKey)
 
-                val encryptedData = cipher.doFinal(data.toByteArray(Charsets.UTF_8))
-                Base64.encodeToString(encryptedData, Base64.DEFAULT)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                null
-            }
+            val encryptedData = cipher.doFinal(data.toByteArray(Charsets.UTF_8))
+            return Base64.encodeToString(encryptedData, Base64.DEFAULT)
         }
 
         /**
@@ -333,21 +328,16 @@ override fun getPublicRSAkey(privateKeyBase64: String): String {
          * @throws Exception if decryption fails.
          */
         @Throws(Exception::class)
-        override fun decryptRSA(data: String, privateKeyBase64: String): String ? {
-            return try {
-                val keyFactory = KeyFactory.getInstance("RSA")
-                val privateKeyBytes = Base64.decode(privateKeyBase64, Base64.DEFAULT)
-                val privateKey = keyFactory.generatePrivate(PKCS8EncodedKeySpec(privateKeyBytes))
+        override fun decryptRSA(data: String, privateKeyBase64: String): String {
+            val keyFactory = KeyFactory.getInstance("RSA")
+            val privateKeyBytes = Base64.decode(privateKeyBase64, Base64.DEFAULT)
+            val privateKey = keyFactory.generatePrivate(PKCS8EncodedKeySpec(privateKeyBytes))
 
-                val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
-                cipher.init(Cipher.DECRYPT_MODE, privateKey)
+            val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
+            cipher.init(Cipher.DECRYPT_MODE, privateKey)
 
-                val encryptedData = Base64.decode(data, Base64.DEFAULT)
-                String(cipher.doFinal(encryptedData), Charsets.UTF_8)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                null
-            }
+            val encryptedData = Base64.decode(data, Base64.DEFAULT)
+            return String(cipher.doFinal(encryptedData), Charsets.UTF_8)
         }
 
         /**

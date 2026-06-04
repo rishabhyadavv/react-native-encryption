@@ -610,10 +610,10 @@ const styles = StyleSheet.create({
    - Clean and rebuild the project.
 
 2. **AES Key Size Error:**  
-   - Ensure the AES key is **16, 24, or 32 characters**.
+   - Ensure the AES key is **128, 192, or 256 bits** (use `generateAESKey(256)` to create one).
 
 3. **RSA Key Parsing Issue:**  
-   - Verify the RSA key is in **Base64-encoded PEM format**.
+   - Verify the RSA key is in **Base64-encoded DER format** (as returned by `generateRSAKeyPair()`).
 
 4. **Permission Issues:**  
    - Ensure native permissions are set correctly in **AndroidManifest.xml** or **iOS Podfile**.
@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
 ## ❓ **10. FAQ**
 
 **Q: Does the library support both Android and iOS?**  
-A: Partially, `rn-encryption` fully supports ios and encryptAES & decryptAES for Android platforms.
+A: Yes, `rn-encryption` fully supports both iOS and Android platforms with AES, RSA, ECDSA, SHA hashing, HMAC, Base64, and file encryption.
 
 **Q: Can I use the library in Expo?**  
 A: Yes, if you're using **Expo Bare Workflow**.
@@ -653,9 +653,8 @@ A: Add console logs and verify that keys and data are correctly passed.
 |--------------------------------|-------------------------------------|----------------------------------|
 | **Symmetric Encryption**       | ✅ AES-256-GCM                      | ✅ AES-256-GCM                   |
 | **Asymmetric Encryption**      | ✅ RSA-2048                         | ✅ RSA-2048                      |
-| **Key Derivation**             | ✅ PBKDF2                           | ✅ PBKDF2 / ✅ HKDF              |
 | **Hashing**                    | ✅ SHA-256, ✅ SHA-512              | ✅ SHA-256, ✅ SHA-512           |
-| **Message Authentication**     | ✅ HMAC-SHA256                      | ✅ HMAC-SHA256                   |
+| **Message Authentication**     | ✅ HMAC-SHA256, ✅ HMAC-SHA512      | ✅ HMAC-SHA256, ✅ HMAC-SHA512   |
 | **Digital Signatures**         | ✅ ECDSA                            | ✅ ECDSA (via CryptoKit)         |
 | **Key Management**             | ✅ Android Keystore                 | ✅ iOS Keychain                  |
 | **Initialization Vector (IV)** | ✅ SecureRandom (12/16 Bytes)       | ✅ Randomized IV (12 Bytes)      |
