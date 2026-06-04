@@ -574,7 +574,19 @@ public class CryptoUtility: NSObject {
     /// - Returns: Base64-encoded key string.
     /// - Throws: EncryptionError if key size is invalid.
     @objc public func generateHMACKey(_ keySize: Int) -> String {
-        let key = SymmetricKey(size: .bits256) // Default 256 bits
+        let key: SymmetricKey
+        switch keySize {
+        case 128:
+            key = SymmetricKey(size: .bits128)
+        case 192:
+            key = SymmetricKey(size: .bits192)
+        case 512:
+            var keyData = Data(count: 64)
+            _ = keyData.withUnsafeMutableBytes { SecRandomCopyBytes(kSecRandomDefault, 64, $0.baseAddress!) }
+            return keyData.base64EncodedString()
+        default:
+            key = SymmetricKey(size: .bits256)
+        }
         let keyData = key.withUnsafeBytes { Data(Array($0)) }
         return keyData.base64EncodedString()
     }
