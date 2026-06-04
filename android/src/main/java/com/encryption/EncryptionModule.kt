@@ -402,31 +402,72 @@ override fun getPublicRSAkey(privateKeyBase64: String): String {
         // ✍️ RSA Signing and Verification
         // -----------------------------------------
 
-        /**
-         * Signs data using an RSA private key with SHA256withRSA.
-         *
-         * @param data The plaintext data to sign.
-         * @param key The Base64-encoded RSA private key.
-         * @return A Base64-encoded digital signature string.
-         * @throws Exception If signing fails due to invalid key format or other errors.
-         */
         @Throws(Exception::class)
         override fun signDataRSA(data: String, key: String): String {
             return SignatureUtils.signDataRSA(data, key)
         }
 
-        /**
-         * Verifies an RSA signature against the provided data and public key.
-         *
-         * @param data The original plaintext data.
-         * @param signatureBase64 The Base64-encoded digital signature.
-         * @param key The Base64-encoded RSA public key used for verification.
-         * @return `true` if the signature is valid, otherwise `false`.
-         * @throws Exception If verification fails due to invalid key format or other errors.
-         */
         @Throws(Exception::class)
         override fun verifySignatureRSA(data: String, signatureBase64: String, key: String): Boolean {
             return SignatureUtils.verifySignatureRSA(data, signatureBase64, key)
+        }
+
+        // -----------------------------------------
+        // 🔑 PBKDF2 Key Derivation
+        // -----------------------------------------
+
+        @Throws(Exception::class)
+        override fun pbkdf2(password: String, salt: String, iterations: Double, keyLength: Double, hash: String): String {
+            val factory = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+            val spec = javax.crypto.spec.PBEKeySpec(
+                password.toCharArray(),
+                salt.toByteArray(Charsets.UTF_8),
+                iterations.toInt(),
+                keyLength.toInt() * 8
+            )
+            val secretKey = factory.generateSecret(spec)
+            return Base64.encodeToString(secretKey.encoded, Base64.DEFAULT)
+        }
+
+        // -----------------------------------------
+        // 🎲 Secure Random Bytes
+        // -----------------------------------------
+
+        @Throws(Exception::class)
+        override fun getRandomBytes(size: Double): String {
+            val bytes = ByteArray(size.toInt())
+            java.security.SecureRandom().nextBytes(bytes)
+            return Base64.encodeToString(bytes, Base64.DEFAULT)
+        }
+
+        // -----------------------------------------
+        // 🔒 RSA-OAEP Encryption
+        // -----------------------------------------
+
+        @Throws(Exception::class)
+        override fun encryptRSAOAEP(data: String, publicKeyBase64: String): String {
+            val keyFactory = KeyFactory.getInstance("RSA")
+            val publicKeyBytes = Base64.decode(publicKeyBase64, Base64.DEFAULT)
+            val publicKey = keyFactory.generatePublic(X509EncodedKeySpec(publicKeyBytes))
+
+            val cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA-256AndMGF1Padding")
+            cipher.init(Cipher.ENCRYPT_MODE, publicKey)
+
+            val encryptedData = cipher.doFinal(data.toByteArray(Charsets.UTF_8))
+            return Base64.encodeToString(encryptedData, Base64.DEFAULT)
+        }
+
+        @Throws(Exception::class)
+        override fun decryptRSAOAEP(data: String, privateKeyBase64: String): String {
+            val keyFactory = KeyFactory.getInstance("RSA")
+            val privateKeyBytes = Base64.decode(privateKeyBase64, Base64.DEFAULT)
+            val privateKey = keyFactory.generatePrivate(PKCS8EncodedKeySpec(privateKeyBytes))
+
+            val cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA-256AndMGF1Padding")
+            cipher.init(Cipher.DECRYPT_MODE, privateKey)
+
+            val encryptedData = Base64.decode(data, Base64.DEFAULT)
+            return String(cipher.doFinal(encryptedData), Charsets.UTF_8)
         }
 
         // -----------------------------------------

@@ -548,97 +548,167 @@ public class CryptoUtility: NSObject {
     
     // MARK: - RSA Signing
     
-    /// Signs data using an RSA private key with PKCS1v15 + SHA-256.
-    /// - Parameters:
-    ///   - data: The plain text data to sign.
-    ///   - privateKeyBase64: Base64-encoded RSA private key.
-    ///   - errorObj: NSErrorPointer for capturing errors.
-    /// - Returns: Base64-encoded signature string or nil on failure.
     @objc public func signDataRSA(_ data: String, privateKeyBase64: String, errorObj: NSErrorPointer) -> String? {
         do {
             let privateKey = try constructSecKey(from: privateKeyBase64, isPublicKey: false)
-            
             guard let dataToSign = data.data(using: .utf8) else {
                 throw EncryptionError.invalidData
             }
-            
             var error: Unmanaged<CFError>?
             guard let signatureData = SecKeyCreateSignature(
-                privateKey,
-                .rsaSignatureMessagePKCS1v15SHA256,
-                dataToSign as CFData,
-                &error
+                privateKey, .rsaSignatureMessagePKCS1v15SHA256, dataToSign as CFData, &error
             ) as Data? else {
                 throw error?.takeRetainedValue() ?? EncryptionError.encryptionFailed
             }
-            
             return signatureData.base64EncodedString()
         } catch let encryptionError as EncryptionError {
-            errorObj?.pointee = NSError(
-                domain: "CryptoUtility",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: encryptionError.localizedDescription]
-            )
+            errorObj?.pointee = NSError(domain: "CryptoUtility", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: encryptionError.localizedDescription])
             return nil
         } catch {
-            errorObj?.pointee = NSError(
-                domain: "CryptoUtility",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "An unknown RSA signing error occurred."]
-            )
+            errorObj?.pointee = NSError(domain: "CryptoUtility", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "An unknown RSA signing error occurred."])
             return nil
         }
     }
     
     // MARK: - RSA Signature Verification
     
-    /// Verifies an RSA signature using PKCS1v15 + SHA-256.
-    /// - Parameters:
-    ///   - data: The original plain text data.
-    ///   - signatureBase64: Base64-encoded signature.
-    ///   - publicKeyBase64: Base64-encoded RSA public key.
-    ///   - errorObj: NSErrorPointer for capturing errors.
-    /// - Returns: Boolean indicating whether the signature is valid.
     @objc public func verifySignatureRSA(_ data: String, signatureBase64: String, publicKeyBase64: String, errorObj: NSErrorPointer) -> Bool {
         do {
             let publicKey = try constructSecKey(from: publicKeyBase64, isPublicKey: true)
-            
             guard let dataToVerify = data.data(using: .utf8),
                   let signatureData = Data(base64Encoded: signatureBase64) else {
                 throw EncryptionError.invalidData
             }
-            
             var error: Unmanaged<CFError>?
             let isValid = SecKeyVerifySignature(
-                publicKey,
-                .rsaSignatureMessagePKCS1v15SHA256,
-                dataToVerify as CFData,
-                signatureData as CFData,
-                &error
+                publicKey, .rsaSignatureMessagePKCS1v15SHA256,
+                dataToVerify as CFData, signatureData as CFData, &error
             )
-            
             if !isValid {
-                if let cfError = error {
-                    cfError.release()
-                }
+                if let cfError = error { cfError.release() }
                 return false
             }
-            
             return true
         } catch let encryptionError as EncryptionError {
-            errorObj?.pointee = NSError(
-                domain: "CryptoUtility",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: encryptionError.localizedDescription]
-            )
+            errorObj?.pointee = NSError(domain: "CryptoUtility", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: encryptionError.localizedDescription])
             return false
         } catch {
-            errorObj?.pointee = NSError(
-                domain: "CryptoUtility",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "An unknown RSA verification error occurred."]
-            )
+            errorObj?.pointee = NSError(domain: "CryptoUtility", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "An unknown RSA verification error occurred."])
             return false
+        }
+    }
+    
+    // MARK: - PBKDF2 Key Derivation
+    
+    @objc public func pbkdf2(_ password: String, salt: String, iterations: Int, keyLength: Int, hash: String, errorObj: NSErrorPointer) -> String? {
+        guard let passwordData = password.data(using: .utf8),
+              let saltData = salt.data(using: .utf8) else {
+            errorObj?.pointee = NSError(domain: "CryptoUtility", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Invalid password or salt"])
+            return nil
+        }
+        let algorithm: CCPBKDFAlgorithm = UInt32(kCCPBKDF2)
+        let prf: CCPseudoRandomAlgorithm
+        if hash == "SHA-512" {
+            prf = CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA512)
+        } else {
+            prf = CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256)
+        }
+        var derivedKeyData = Data(count: keyLength)
+        let status = derivedKeyData.withUnsafeMutableBytes { derivedKeyBytes in
+            passwordData.withUnsafeBytes { passwordBytes in
+                saltData.withUnsafeBytes { saltBytes in
+                    CCKeyDerivationPBKDF(
+                        algorithm,
+                        passwordBytes.baseAddress?.assumingMemoryBound(to: Int8.self),
+                        passwordData.count,
+                        saltBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                        saltData.count,
+                        prf,
+                        UInt32(iterations),
+                        derivedKeyBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                        keyLength
+                    )
+                }
+            }
+        }
+        if status != kCCSuccess {
+            errorObj?.pointee = NSError(domain: "CryptoUtility", code: Int(status),
+                userInfo: [NSLocalizedDescriptionKey: "PBKDF2 key derivation failed"])
+            return nil
+        }
+        return derivedKeyData.base64EncodedString()
+    }
+    
+    // MARK: - Secure Random Bytes
+    
+    @objc public func getRandomBytes(_ size: Int, errorObj: NSErrorPointer) -> String? {
+        var bytes = [UInt8](repeating: 0, count: size)
+        let status = SecRandomCopyBytes(kSecRandomDefault, size, &bytes)
+        if status != errSecSuccess {
+            errorObj?.pointee = NSError(domain: "CryptoUtility", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to generate random bytes"])
+            return nil
+        }
+        return Data(bytes).base64EncodedString()
+    }
+    
+    // MARK: - RSA-OAEP Encryption
+    
+    @objc public func encryptRSAOAEP(_ data: String, publicKeyBase64: String, errorObj: NSErrorPointer) -> String? {
+        do {
+            let publicKey = try constructSecKey(from: publicKeyBase64, isPublicKey: true)
+            guard let dataToEncrypt = data.data(using: .utf8) else {
+                throw EncryptionError.invalidData
+            }
+            var error: Unmanaged<CFError>?
+            guard let encryptedData = SecKeyCreateEncryptedData(
+                publicKey, .rsaEncryptionOAEPSHA256, dataToEncrypt as CFData, &error
+            ) as Data? else {
+                throw error?.takeRetainedValue() ?? EncryptionError.encryptionFailed
+            }
+            return encryptedData.base64EncodedString()
+        } catch let encryptionError as EncryptionError {
+            errorObj?.pointee = NSError(domain: "CryptoUtility", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: encryptionError.localizedDescription])
+            return nil
+        } catch {
+            errorObj?.pointee = NSError(domain: "CryptoUtility", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "RSA-OAEP encryption failed."])
+            return nil
+        }
+    }
+    
+    // MARK: - RSA-OAEP Decryption
+    
+    @objc public func decryptRSAOAEP(_ data: String, privateKeyBase64: String, errorObj: NSErrorPointer) -> String? {
+        do {
+            let privateKey = try constructSecKey(from: privateKeyBase64, isPublicKey: false)
+            guard let encryptedData = Data(base64Encoded: data) else {
+                throw EncryptionError.invalidBase64
+            }
+            var error: Unmanaged<CFError>?
+            guard let decryptedData = SecKeyCreateDecryptedData(
+                privateKey, .rsaEncryptionOAEPSHA256, encryptedData as CFData, &error
+            ) as Data? else {
+                throw error?.takeRetainedValue() ?? EncryptionError.decryptionFailed
+            }
+            guard let decryptedString = String(data: decryptedData, encoding: .utf8) else {
+                throw EncryptionError.decryptionFailed
+            }
+            return decryptedString
+        } catch let decryptionError as EncryptionError {
+            errorObj?.pointee = NSError(domain: "CryptoUtility", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: decryptionError.localizedDescription])
+            return nil
+        } catch {
+            errorObj?.pointee = NSError(domain: "CryptoUtility", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "RSA-OAEP decryption failed."])
+            return nil
         }
     }
     

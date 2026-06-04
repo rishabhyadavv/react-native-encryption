@@ -57,7 +57,7 @@ function stringToUtf8Bytes(str: string): Uint8Array {
   return new TextEncoder().encode(str);
 }
 
-// --- Hash: output hex to match native (iOS/Android return lowercase hex) ---
+// --- Hash: output hex to match native ---
 
 export async function hashSHA256(input: string): Promise<string> {
   const data = stringToUtf8Bytes(input);
@@ -71,7 +71,7 @@ export async function hashSHA512(input: string): Promise<string> {
   return arrayBufferToHex(hashBuffer);
 }
 
-// --- HMAC: use raw key bytes (decode Base64) and output hex to match native ---
+// --- HMAC: decode Base64 key and output hex to match native ---
 
 export async function generateHMACKey(keySize: number): Promise<string> {
   const key = await crypto.subtle.generateKey(
@@ -168,7 +168,7 @@ export async function getPublicRSAkey(
   return btoa(binary);
 }
 
-// --- RSA Sign/Verify: RSASSA-PKCS1-v1_5 + SHA-256, async on web ---
+// --- RSA Sign/Verify ---
 
 export async function signDataRSA(
   data: string,
@@ -212,5 +212,93 @@ export async function verifySignatureRSA(
     signatureBytes,
     dataBytes
   );
+  return result;
+}
+
+// --- PBKDF2 Key Derivation ---
+
+export async function pbkdf2(
+  password: string,
+  salt: string,
+  iterations: number,
+  keyLength: number,
+  hash: string
+): Promise<string> {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  );
+  const hashAlgo = hash === 'SHA-512' ? 'SHA-512' : 'SHA-256';
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: enc.encode(salt),
+      iterations: iterations,
+      hash: hashAlgo,
+    },
+    keyMaterial,
+    keyLength * 8
+  );
+  return arrayBufferToBase64(derivedBits);
+}
+
+// --- Secure Random Bytes ---
+
+export async function getRandomBytes(size: number): Promise<string> {
+  const bytes = new Uint8Array(size);
+  crypto.getRandomValues(bytes);
+  return arrayBufferToBase64(bytes.buffer as ArrayBuffer);
+}
+
+// --- RSA-OAEP Encryption ---
+
+export async function encryptRSAOAEP(
+  data: string,
+  publicKeyBase64: string
+): Promise<string> {
+  const keyData = base64ToArrayBuffer(publicKeyBase64);
+  const publicKey = await crypto.subtle.importKey(
+    'spki',
+    keyData,
+    { name: 'RSA-OAEP', hash: 'SHA-256' },
+    false,
+    ['encrypt']
+  );
+  const enc = new TextEncoder();
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'RSA-OAEP' },
+    publicKey,
+    enc.encode(data)
+  );
+  return arrayBufferToBase64(encrypted);
+}
+
+export async function decryptRSAOAEP(
+  data: string,
+  privateKeyBase64: string
+): Promise<string> {
+  const keyData = base64ToArrayBuffer(privateKeyBase64);
+  const privateKey = await crypto.subtle.importKey(
+    'pkcs8',
+    keyData,
+    { name: 'RSA-OAEP', hash: 'SHA-256' },
+    false,
+    ['decrypt']
+  );
+  const encryptedData = base64ToArrayBuffer(data);
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'RSA-OAEP' },
+    privateKey,
+    encryptedData
+  );
+  const bytes = new Uint8Array(decrypted);
+  let result = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    result += String.fromCharCode(bytes[i]!);
+  }
   return result;
 }
