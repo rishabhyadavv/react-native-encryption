@@ -617,11 +617,14 @@ public class CryptoUtility: NSObject {
                 &error
             )
             
-            if let cfError = error {
-                throw cfError.takeRetainedValue()
+            if !isValid {
+                if let cfError = error {
+                    cfError.release()
+                }
+                return false
             }
             
-            return isValid
+            return true
         } catch let encryptionError as EncryptionError {
             errorObj?.pointee = NSError(
                 domain: "CryptoUtility",
