@@ -43,6 +43,15 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
   return bytes.buffer as ArrayBuffer;
 }
 
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]!);
+  }
+  return btoa(binary);
+}
+
 function stringToUtf8Bytes(str: string): Uint8Array {
   return new TextEncoder().encode(str);
 }
@@ -156,4 +165,51 @@ export async function getPublicRSAkey(
     binary += String.fromCharCode(spkiBytes[i]!);
   }
   return btoa(binary);
+}
+
+// --- RSA Sign/Verify: RSASSA-PKCS1-v1_5 + SHA-256, async on web ---
+
+export async function signDataRSA(
+  data: string,
+  privateKeyBase64: string
+): Promise<string> {
+  const keyData = base64ToArrayBuffer(privateKeyBase64);
+  const privateKey = await crypto.subtle.importKey(
+    'pkcs8',
+    keyData,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const dataBytes = stringToUtf8Bytes(data);
+  const signature: ArrayBuffer = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    privateKey,
+    dataBytes
+  );
+  return arrayBufferToBase64(signature);
+}
+
+export async function verifySignatureRSA(
+  data: string,
+  signatureBase64: string,
+  publicKeyBase64: string
+): Promise<boolean> {
+  const keyData = base64ToArrayBuffer(publicKeyBase64);
+  const publicKey = await crypto.subtle.importKey(
+    'spki',
+    keyData,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['verify']
+  );
+  const signatureBytes = base64ToArrayBuffer(signatureBase64);
+  const dataBytes = stringToUtf8Bytes(data);
+  const result: boolean = await crypto.subtle.verify(
+    'RSASSA-PKCS1-v1_5',
+    publicKey,
+    signatureBytes,
+    dataBytes
+  );
+  return result;
 }
