@@ -546,6 +546,99 @@ public class CryptoUtility: NSObject {
             }
         }
     
+    // MARK: - RSA Signing
+    
+    /// Signs data using an RSA private key with PKCS1v15 + SHA-256.
+    /// - Parameters:
+    ///   - data: The plain text data to sign.
+    ///   - privateKeyBase64: Base64-encoded RSA private key.
+    ///   - errorObj: NSErrorPointer for capturing errors.
+    /// - Returns: Base64-encoded signature string or nil on failure.
+    @objc public func signDataRSA(_ data: String, privateKeyBase64: String, errorObj: NSErrorPointer) -> String? {
+        do {
+            let privateKey = try constructSecKey(from: privateKeyBase64, isPublicKey: false)
+            
+            guard let dataToSign = data.data(using: .utf8) else {
+                throw EncryptionError.invalidData
+            }
+            
+            var error: Unmanaged<CFError>?
+            guard let signatureData = SecKeyCreateSignature(
+                privateKey,
+                .rsaSignatureMessagePKCS1v15SHA256,
+                dataToSign as CFData,
+                &error
+            ) as Data? else {
+                throw error?.takeRetainedValue() ?? EncryptionError.encryptionFailed
+            }
+            
+            return signatureData.base64EncodedString()
+        } catch let encryptionError as EncryptionError {
+            errorObj?.pointee = NSError(
+                domain: "CryptoUtility",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: encryptionError.localizedDescription]
+            )
+            return nil
+        } catch {
+            errorObj?.pointee = NSError(
+                domain: "CryptoUtility",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "An unknown RSA signing error occurred."]
+            )
+            return nil
+        }
+    }
+    
+    // MARK: - RSA Signature Verification
+    
+    /// Verifies an RSA signature using PKCS1v15 + SHA-256.
+    /// - Parameters:
+    ///   - data: The original plain text data.
+    ///   - signatureBase64: Base64-encoded signature.
+    ///   - publicKeyBase64: Base64-encoded RSA public key.
+    ///   - errorObj: NSErrorPointer for capturing errors.
+    /// - Returns: Boolean indicating whether the signature is valid.
+    @objc public func verifySignatureRSA(_ data: String, signatureBase64: String, publicKeyBase64: String, errorObj: NSErrorPointer) -> Bool {
+        do {
+            let publicKey = try constructSecKey(from: publicKeyBase64, isPublicKey: true)
+            
+            guard let dataToVerify = data.data(using: .utf8),
+                  let signatureData = Data(base64Encoded: signatureBase64) else {
+                throw EncryptionError.invalidData
+            }
+            
+            var error: Unmanaged<CFError>?
+            let isValid = SecKeyVerifySignature(
+                publicKey,
+                .rsaSignatureMessagePKCS1v15SHA256,
+                dataToVerify as CFData,
+                signatureData as CFData,
+                &error
+            )
+            
+            if let cfError = error {
+                throw cfError.takeRetainedValue()
+            }
+            
+            return isValid
+        } catch let encryptionError as EncryptionError {
+            errorObj?.pointee = NSError(
+                domain: "CryptoUtility",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: encryptionError.localizedDescription]
+            )
+            return false
+        } catch {
+            errorObj?.pointee = NSError(
+                domain: "CryptoUtility",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "An unknown RSA verification error occurred."]
+            )
+            return false
+        }
+    }
+    
     // MARK: - Hashing (SHA256 & SHA512)
     
     /// Generate a hashSHA256 base64 key as string

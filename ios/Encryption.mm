@@ -399,6 +399,34 @@ RCT_EXPORT_MODULE()
 }
 
 
+#pragma mark - RSA Signing and Verification
+
+- (NSString *)signDataRSA:(NSString *)data key:(NSString *)key {
+    NSError *error = nil;
+    NSString *signedString = [cryptoUtil signDataRSA:data privateKeyBase64:key errorObj:&error];
+    
+    if (error) {
+        @throw [NSException exceptionWithName:@"EncryptionError"
+                                       reason:error.localizedDescription
+                                     userInfo:nil];
+    } else {
+        return signedString;
+    }
+}
+
+- (NSNumber *)verifySignatureRSA:(NSString *)data signatureBase64:(NSString *)signature key:(NSString *)key {
+    NSError *error = nil;
+    BOOL isValid = [cryptoUtil verifySignatureRSA:data signatureBase64:signature publicKeyBase64:key errorObj:&error];
+    
+    if (error) {
+        @throw [NSException exceptionWithName:@"EncryptionError"
+                                       reason:error.localizedDescription
+                                     userInfo:nil];
+    } else {
+        return @(isValid);
+    }
+}
+
 #pragma mark - Hashing
 
 // SHA-256 Hashing
