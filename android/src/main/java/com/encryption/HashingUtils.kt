@@ -90,29 +90,31 @@ fun generateHMACKey(keySize: Double): String {
          */
         @Throws(Exception::class)
         fun hmacSHA256(data: String, key: String): String {
-            val secretKey = SecretKeySpec(key.toByteArray(), "HmacSHA256")
+            val keyBytes = Base64.decode(key, Base64.DEFAULT)
+            val secretKey = SecretKeySpec(keyBytes, "HmacSHA256")
             val mac = Mac.getInstance("HmacSHA256")
             mac.init(secretKey)
-            val hash = mac.doFinal(data.toByteArray())
+            val hash = mac.doFinal(data.toByteArray(Charsets.UTF_8))
             return hash.joinToString("") {
                 "%02x".format(it)
             }
         }
 
         /**
-         * Hashes data using hmac SHA-256.
+         * Hashes data using hmac SHA-512.
          *
          * @param data The input string to hash.
-         * @param key The input key to be used for hash.
-         * @return A hex-encoded hmac SHA-256 hash.
+         * @param key The Base64-encoded key to be used for hash.
+         * @return A hex-encoded hmac SHA-512 hash.
          * @throws Exception if hashing fails.
          */
         @Throws(Exception::class)
         fun hmacSHA512(data: String, key: String): String {
-            val secretKey = SecretKeySpec(key.toByteArray(), "HmacSHA512")
+            val keyBytes = Base64.decode(key, Base64.DEFAULT)
+            val secretKey = SecretKeySpec(keyBytes, "HmacSHA512")
             val mac = Mac.getInstance("HmacSHA512")
             mac.init(secretKey)
-            val hash = mac.doFinal(data.toByteArray())
+            val hash = mac.doFinal(data.toByteArray(Charsets.UTF_8))
             return hash.joinToString("") {
                 "%02x".format(it)
             }
