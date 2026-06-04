@@ -84,6 +84,28 @@ export function verifySignatureRSA(
   return Encryption.verifySignatureRSA(data, signatureBase64, key);
 }
 
+export function pbkdf2(
+  password: string,
+  salt: string,
+  iterations: number,
+  keyLength: number,
+  hash: string
+): string {
+  return Encryption.pbkdf2(password, salt, iterations, keyLength, hash);
+}
+
+export function getRandomBytes(size: number): string {
+  return Encryption.getRandomBytes(size);
+}
+
+export function encryptRSAOAEP(data: string, publicKey: string): string {
+  return Encryption.encryptRSAOAEP(data, publicKey);
+}
+
+export function decryptRSAOAEP(data: string, privateKey: string): string {
+  return Encryption.decryptRSAOAEP(data, privateKey);
+}
+
 export function generateECDSAKeyPair(): keypair {
   return Encryption.generateECDSAKeyPair();
 }
