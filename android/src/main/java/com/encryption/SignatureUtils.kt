@@ -32,7 +32,7 @@ object SignatureUtils {
             signature.update(data.toByteArray(Charsets.UTF_8))
 
             val signedData = signature.sign()
-            Base64.encodeToString(signedData, Base64.DEFAULT)
+            Base64.encodeToString(signedData, Base64.NO_WRAP)
         } catch (e: Exception) {
             e.printStackTrace()
             throw Exception("Failed to sign data with RSA: ${e.localizedMessage}")

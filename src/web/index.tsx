@@ -35,7 +35,8 @@ function arrayBufferToHex(buffer: ArrayBuffer): string {
 }
 
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const binaryString: string = atob(base64);
+  const cleaned = base64.replace(/\s/g, '');
+  const binaryString: string = atob(cleaned);
   const bytes = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
     bytes[i] = binaryString.charCodeAt(i);
