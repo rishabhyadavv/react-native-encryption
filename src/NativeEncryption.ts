@@ -23,6 +23,12 @@ export interface Spec extends TurboModule {
   decryptRSA(data: string, privateKey: string): string;
   encryptAsyncRSA(data: string, publicKey: string): Promise<string>;
   decryptAsyncRSA(data: string, privateKey: string): Promise<string>;
+  signDataRSA(data: string, key: string): string;
+  verifySignatureRSA(
+    data: string,
+    signatureBase64: string,
+    key: string
+  ): boolean;
 
   hashSHA256(input: string): string;
   hashSHA512(input: string): string;

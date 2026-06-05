@@ -399,6 +399,37 @@ override fun getPublicRSAkey(privateKeyBase64: String): String {
         }
 
         // -----------------------------------------
+        // ✍️ RSA Signing and Verification
+        // -----------------------------------------
+
+        /**
+         * Signs data using an RSA private key with SHA256withRSA.
+         *
+         * @param data The plaintext data to sign.
+         * @param key The Base64-encoded RSA private key.
+         * @return A Base64-encoded digital signature string.
+         * @throws Exception If signing fails due to invalid key format or other errors.
+         */
+        @Throws(Exception::class)
+        override fun signDataRSA(data: String, key: String): String {
+            return SignatureUtils.signDataRSA(data, key)
+        }
+
+        /**
+         * Verifies an RSA signature against the provided data and public key.
+         *
+         * @param data The original plaintext data.
+         * @param signatureBase64 The Base64-encoded digital signature.
+         * @param key The Base64-encoded RSA public key used for verification.
+         * @return `true` if the signature is valid, otherwise `false`.
+         * @throws Exception If verification fails due to invalid key format or other errors.
+         */
+        @Throws(Exception::class)
+        override fun verifySignatureRSA(data: String, signatureBase64: String, key: String): Boolean {
+            return SignatureUtils.verifySignatureRSA(data, signatureBase64, key)
+        }
+
+        // -----------------------------------------
         // 🛡️ SHA Hashing
         // -----------------------------------------
 

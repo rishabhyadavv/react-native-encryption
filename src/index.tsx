@@ -12,6 +12,12 @@ type EncryptionModule = {
   encryptRSA(data: string, key: string): string;
   decryptRSA(data: string, key: string): string;
   generateRSAKeyPair(): KeyPair;
+  signDataRSA(data: string, key: string): string;
+  verifySignatureRSA(
+    data: string,
+    signatureBase64: string,
+    key: string
+  ): boolean;
   generateHMACKey(keySize: number): string;
   hmacSHA256(data: string, key: string): string;
   hmacSHA512(data: string, key: string): string;
@@ -73,6 +79,18 @@ export function decryptRSA(data: string, key: string): string {
 
 export function generateRSAKeyPair(): KeyPair {
   return Encryption.generateRSAKeyPair();
+}
+
+export function signDataRSA(data: string, key: string): string {
+  return Encryption.signDataRSA(data, key);
+}
+
+export function verifySignatureRSA(
+  data: string,
+  signatureBase64: string,
+  key: string
+): boolean {
+  return Encryption.verifySignatureRSA(data, signatureBase64, key);
 }
 
 export function generateHMACKey(keySize: number): string {
