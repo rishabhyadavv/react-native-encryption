@@ -41,6 +41,17 @@ export interface Spec extends TurboModule {
   base64Encode(input: string): string;
   base64Decode(input: string): string;
 
+  pbkdf2(
+    password: string,
+    salt: string,
+    iterations: number,
+    keyLength: number,
+    hash: string
+  ): string;
+  getRandomBytes(size: number): string;
+  encryptRSAOAEP(data: string, publicKey: string): string;
+  decryptRSAOAEP(data: string, privateKey: string): string;
+
   generateECDSAKeyPair(): keypair;
   getPublicECDSAKey(privateECDAkey: string): string;
   signDataECDSA(data: string, key: string): string;

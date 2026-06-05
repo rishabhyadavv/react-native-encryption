@@ -427,6 +427,64 @@ RCT_EXPORT_MODULE()
     }
 }
 
+#pragma mark - PBKDF2
+
+- (NSString *)pbkdf2:(NSString *)password salt:(NSString *)salt iterations:(double)iterations keyLength:(double)keyLength hash:(NSString *)hash {
+    NSError *error = nil;
+    NSString *derivedKey = [cryptoUtil pbkdf2:password salt:salt iterations:(int)iterations keyLength:(int)keyLength hash:hash errorObj:&error];
+    
+    if (error) {
+        @throw [NSException exceptionWithName:@"PBKDF2Error"
+                                       reason:error.localizedDescription
+                                     userInfo:nil];
+    } else {
+        return derivedKey;
+    }
+}
+
+#pragma mark - Random Bytes
+
+- (NSString *)getRandomBytes:(double)size {
+    NSError *error = nil;
+    NSString *randomBytes = [cryptoUtil getRandomBytes:(int)size errorObj:&error];
+    
+    if (error) {
+        @throw [NSException exceptionWithName:@"RandomBytesError"
+                                       reason:error.localizedDescription
+                                     userInfo:nil];
+    } else {
+        return randomBytes;
+    }
+}
+
+#pragma mark - RSA-OAEP
+
+- (NSString *)encryptRSAOAEP:(NSString *)data publicKey:(NSString *)publicKey {
+    NSError *error = nil;
+    NSString *encryptedString = [cryptoUtil encryptRSAOAEP:data publicKeyBase64:publicKey errorObj:&error];
+    
+    if (error) {
+        @throw [NSException exceptionWithName:@"EncryptionError"
+                                       reason:error.localizedDescription
+                                     userInfo:nil];
+    } else {
+        return encryptedString;
+    }
+}
+
+- (NSString *)decryptRSAOAEP:(NSString *)data privateKey:(NSString *)privateKey {
+    NSError *error = nil;
+    NSString *decryptedString = [cryptoUtil decryptRSAOAEP:data privateKeyBase64:privateKey errorObj:&error];
+    
+    if (error) {
+        @throw [NSException exceptionWithName:@"DecryptionError"
+                                       reason:error.localizedDescription
+                                     userInfo:nil];
+    } else {
+        return decryptedString;
+    }
+}
+
 #pragma mark - Hashing
 
 // SHA-256 Hashing

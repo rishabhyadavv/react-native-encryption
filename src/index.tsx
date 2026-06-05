@@ -45,6 +45,16 @@ type EncryptionModule = {
   decryptFile(inputPath: string, key: string): Promise<string>;
   getPublicRSAkey(privateRSAkey: string): string;
   getPublicECDSAKey(privateECDAkey: string): string;
+  pbkdf2(
+    password: string,
+    salt: string,
+    iterations: number,
+    keyLength: number,
+    hash: string
+  ): string;
+  getRandomBytes(size: number): string;
+  encryptRSAOAEP(data: string, publicKey: string): string;
+  decryptRSAOAEP(data: string, privateKey: string): string;
 };
 
 let Encryption: EncryptionModule;
@@ -175,4 +185,26 @@ export function getPublicRSAkey(privateRSAkey: string): string {
 
 export function getPublicECDSAKey(privateECDAkey: string): string {
   return Encryption.getPublicECDSAKey(privateECDAkey);
+}
+
+export function pbkdf2(
+  password: string,
+  salt: string,
+  iterations: number,
+  keyLength: number,
+  hash: string
+): string {
+  return Encryption.pbkdf2(password, salt, iterations, keyLength, hash);
+}
+
+export function getRandomBytes(size: number): string {
+  return Encryption.getRandomBytes(size);
+}
+
+export function encryptRSAOAEP(data: string, publicKey: string): string {
+  return Encryption.encryptRSAOAEP(data, publicKey);
+}
+
+export function decryptRSAOAEP(data: string, privateKey: string): string {
+  return Encryption.decryptRSAOAEP(data, privateKey);
 }
