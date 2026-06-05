@@ -85,13 +85,19 @@ import {
   generateECDSAKeyPair,
   signDataECDSA,
   verifySignatureECDSA,
+  signDataRSA,
+  verifySignatureRSA,
   encryptAsyncAES,
   decryptAsyncAES,
   encryptAsyncRSA,
   decryptAsyncRSA,
   encryptFile,
   decryptFile,
-} from 'rn-encryption';;
+  pbkdf2,
+  getRandomBytes,
+  encryptRSAOAEP,
+  decryptRSAOAEP,
+} from 'rn-encryption';
 ```
 
 - **Each method can be accessed directly without a default object wrapper.**
@@ -109,34 +115,50 @@ import {
 
 ### 🔑 **RSA Encryption/Decryption**
 - **`generateRSAKeyPair(): keypair`**  
-- **`encryptRSA(data: string, publicKey: string): string`**  
-- **`decryptRSA(data: string, privateKey: string): string`**
+- **`getPublicRSAkey(privateKey: string): string`**  
+- **`encryptRSA(data: string, publicKey: string): string`** — PKCS#1 v1.5 padding  
+- **`decryptRSA(data: string, privateKey: string): string`** — PKCS#1 v1.5 padding
+
+### 🔒 **RSA-OAEP Encryption (Recommended)**
+- **`encryptRSAOAEP(data: string, publicKey: string): string`** — OAEP + SHA-256 padding  
+- **`decryptRSAOAEP(data: string, privateKey: string): string`** — OAEP + SHA-256 padding
+
+### ✍️ **RSA Digital Signatures**
+- **`signDataRSA(data: string, privateKey: string): string`** — PKCS#1 v1.5 + SHA-256  
+- **`verifySignatureRSA(data: string, signatureBase64: string, publicKey: string): boolean`**
 
 ### 🛡️ **SHA Hashing**
 - **`hashSHA256(input: string): string`**  
 - **`hashSHA512(input: string): string`**
 
-### 📝 **HMAC-SHA256**
-- **`hmacSHA256(data: string, key: string): string`**
+### 📝 **HMAC**
+- **`generateHMACKey(keySize: number): string`**  
+- **`hmacSHA256(data: string, key: string): string`**  
+- **`hmacSHA512(data: string, key: string): string`**
 
-### 🎲 **Random String Generation**
-- **`generateRandomString(input: number): string`**
+### 🔑 **PBKDF2 Key Derivation**
+- **`pbkdf2(password: string, salt: string, iterations: number, keyLength: number, hash: string): string`**
+
+### 🎲 **Random Generation**
+- **`generateRandomString(input: number): string`**  
+- **`getRandomBytes(size: number): string`** — Returns Base64-encoded secure random bytes
 
 ### 📝 **Base64 Encoding/Decoding**
 - **`base64Encode(input: string): string`**  
 - **`base64Decode(input: string): string`**
 
-### 🔒 **ECDA Encryption/Decryption**
+### 🔒 **ECDSA Digital Signatures**
 - **`generateECDSAKeyPair(): keypair`**  
+- **`getPublicECDSAKey(privateKey: string): string`**  
 - **`signDataECDSA(data: string, key: string): string`**  
-- **`verifySignatureECDSA(data: string,signatureBase64: string, key: string): boolean`**
+- **`verifySignatureECDSA(data: string, signatureBase64: string, key: string): boolean`**
 
 ### 🔒 **Asynchronous Methods**
 - **`encryptAsyncAES(data: string, key: string): Promise<string>`**
 - **`decryptAsyncAES(data: string, key: string): Promise<string>`**
 - **`encryptAsyncRSA(data: string, key: string): Promise<string>`**
 - **`decryptAsyncRSA(data: string, key: string): Promise<string>`**
-- **`encryptFile(inputPath: string,outputPath: string, key: string): Promise<string>`**
+- **`encryptFile(inputPath: string, outputPath: string, key: string): Promise<string>`**
 - **`decryptFile(inputPath: string, key: string): Promise<string>`**
 ---
 
@@ -441,6 +463,62 @@ const styles = StyleSheet.create({
 
 ```
 
+## 🛠️ **6b. New Features Usage Examples**
+
+### RSA Digital Signatures
+```tsx
+import { generateRSAKeyPair, signDataRSA, verifySignatureRSA } from 'rn-encryption';
+
+const keyPair = generateRSAKeyPair();
+const data = 'Important document content';
+const signature = signDataRSA(data, keyPair.privateKey);
+const isValid = verifySignatureRSA(data, signature, keyPair.publicKey);
+console.log('Signature valid:', isValid); // true
+```
+
+### PBKDF2 Key Derivation
+```tsx
+import { pbkdf2, encryptAES, decryptAES } from 'rn-encryption';
+
+// Derive an encryption key from a password
+const derivedKey = pbkdf2(
+  'user-password',    // password
+  'random-salt-here', // salt (should be random per user)
+  100000,             // iterations (higher = more secure but slower)
+  32,                 // key length in bytes (32 = 256 bits for AES-256)
+  'SHA-256'           // hash algorithm: 'SHA-256' or 'SHA-512'
+);
+
+// Use the derived key for AES encryption
+const encrypted = encryptAES('sensitive data', derivedKey);
+const decrypted = decryptAES(encrypted, derivedKey);
+```
+
+### Secure Random Bytes
+```tsx
+import { getRandomBytes } from 'rn-encryption';
+
+// Generate 32 bytes of cryptographically secure random data (Base64-encoded)
+const randomBytes = getRandomBytes(32);
+console.log('Random bytes:', randomBytes);
+
+// Useful for generating salts, nonces, or tokens
+const salt = getRandomBytes(16);
+```
+
+### RSA-OAEP Encryption (More Secure)
+```tsx
+import { generateRSAKeyPair, encryptRSAOAEP, decryptRSAOAEP } from 'rn-encryption';
+
+// RSA-OAEP is recommended over PKCS#1 v1.5 for new applications
+const keyPair = generateRSAKeyPair();
+const encrypted = encryptRSAOAEP('sensitive data', keyPair.publicKey);
+const decrypted = decryptRSAOAEP(encrypted, keyPair.privateKey);
+console.log('Decrypted:', decrypted); // 'sensitive data'
+```
+
+---
+
 ## 🛠️ **7.Web Usage Examples**
 ```tsx
 import { View, Text,  StyleSheet, Button } from 'react-native';
@@ -625,6 +703,9 @@ const styles = StyleSheet.create({
 1. **Do Not Hardcode Keys:** Use `.env` or secure storage for keys.
 2. **Handle Errors Gracefully:** Wrap calls in `try-catch` blocks.
 3. **Validate Key Sizes:** Ensure AES and RSA keys meet size requirements.
+4. **Use RSA-OAEP over PKCS#1 v1.5:** For new RSA encryption, prefer `encryptRSAOAEP`/`decryptRSAOAEP` as PKCS#1 v1.5 is vulnerable to padding oracle attacks.
+5. **Use PBKDF2 for password-based keys:** Never use passwords directly as encryption keys. Use `pbkdf2()` with a random salt and high iteration count (100,000+).
+6. **Generate random salts:** Use `getRandomBytes()` to generate unique salts for PBKDF2 and other operations.
 
 ---
 
@@ -655,7 +736,10 @@ A: Add console logs and verify that keys and data are correctly passed.
 | **Asymmetric Encryption**      | ✅ RSA-2048                         | ✅ RSA-2048                      |
 | **Hashing**                    | ✅ SHA-256, ✅ SHA-512              | ✅ SHA-256, ✅ SHA-512           |
 | **Message Authentication**     | ✅ HMAC-SHA256, ✅ HMAC-SHA512      | ✅ HMAC-SHA256, ✅ HMAC-SHA512   |
-| **Digital Signatures**         | ✅ ECDSA                            | ✅ ECDSA (via CryptoKit)         |
+| **Digital Signatures**         | ✅ ECDSA, ✅ RSA (SHA-256)          | ✅ ECDSA, ✅ RSA (SHA-256)       |
+| **Key Derivation**             | ✅ PBKDF2 (SHA-256/SHA-512)         | ✅ PBKDF2 (SHA-256/SHA-512)      |
+| **RSA-OAEP**                   | ✅ OAEP + SHA-256                   | ✅ OAEP + SHA-256                |
+| **Secure Random**              | ✅ SecureRandom                     | ✅ SecRandomCopyBytes            |
 | **Key Management**             | ✅ Android Keystore                 | ✅ iOS Keychain                  |
 | **Initialization Vector (IV)** | ✅ SecureRandom (12/16 Bytes)       | ✅ Randomized IV (12 Bytes)      |
 | **Authentication Tag**         | ✅ Built-in (GCM Mode)              | ✅ Built-in (GCM Mode)           |

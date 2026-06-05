@@ -23,6 +23,12 @@ import {
   encryptFile,
   decryptFile,
   generateHMACKey,
+  signDataRSA,
+  verifySignatureRSA,
+  pbkdf2,
+  getRandomBytes,
+  encryptRSAOAEP,
+  decryptRSAOAEP,
 } from '../../src';
 import RNFS from 'react-native-fs';
 
@@ -170,8 +176,80 @@ export default function DashboardScreen() {
     const signature = signDataECDSA(data, keyPair.privateKey);
     const isValid = verifySignatureECDSA(data, signature, keyPair.publicKey);
 
-    console.log('Signature:', signature);
-    console.log('Is Valid Signature:', isValid);
+    console.log('ECDSA Signature:', signature);
+    console.log('ECDSA Is Valid:', isValid);
+  };
+
+  const signDataRSAExample = () => {
+    try {
+      const keyPair = generateRSAKeyPair();
+      const data = 'Hello, RSA Signing!';
+      const signature = signDataRSA(data, keyPair.privateKey);
+      const isValid = verifySignatureRSA(data, signature, keyPair.publicKey);
+      console.log('RSA Signature:', signature.substring(0, 40) + '...');
+      console.log('RSA Is Valid:', isValid);
+
+      const isTampered = verifySignatureRSA(
+        'tampered',
+        signature,
+        keyPair.publicKey
+      );
+      console.log('RSA Tampered rejected:', !isTampered);
+    } catch (err) {
+      console.log('RSA Sign Error:', err);
+    }
+  };
+
+  const handlePBKDF2 = () => {
+    try {
+      const derivedKey = pbkdf2(
+        'myPassword',
+        'randomSalt',
+        100000,
+        32,
+        'SHA-256'
+      );
+      console.log('PBKDF2 Derived Key (SHA-256):', derivedKey);
+
+      const derivedKey512 = pbkdf2(
+        'myPassword',
+        'randomSalt',
+        100000,
+        32,
+        'SHA-512'
+      );
+      console.log('PBKDF2 Derived Key (SHA-512):', derivedKey512);
+    } catch (err) {
+      console.log('PBKDF2 Error:', err);
+    }
+  };
+
+  const handleRandomBytes = () => {
+    try {
+      const bytes16 = getRandomBytes(16);
+      console.log('Random 16 bytes:', bytes16);
+
+      const bytes32 = getRandomBytes(32);
+      console.log('Random 32 bytes:', bytes32);
+    } catch (err) {
+      console.log('Random Bytes Error:', err);
+    }
+  };
+
+  const handleRSAOAEP = () => {
+    try {
+      const keyPair = generateRSAKeyPair();
+      const plaintext = 'Hello, RSA-OAEP!';
+
+      const encrypted = encryptRSAOAEP(plaintext, keyPair.publicKey);
+      console.log('RSA-OAEP Encrypted:', encrypted.substring(0, 40) + '...');
+
+      const decrypted = decryptRSAOAEP(encrypted, keyPair.privateKey);
+      console.log('RSA-OAEP Decrypted:', decrypted);
+      console.log('RSA-OAEP Match:', decrypted === plaintext);
+    } catch (err) {
+      console.log('RSA-OAEP Error:', err);
+    }
   };
 
   const base64 = () => {
@@ -257,7 +335,15 @@ export default function DashboardScreen() {
 
       <Button title="Generate random" onPress={createRandomString} />
 
-      <Button title="Sign & Validate data" onPress={signData} />
+      <Button title="ECDSA Sign & Verify" onPress={signData} />
+
+      <Button title="RSA Sign & Verify" onPress={signDataRSAExample} />
+
+      <Button title="PBKDF2 Key Derivation" onPress={handlePBKDF2} />
+
+      <Button title="Secure Random Bytes" onPress={handleRandomBytes} />
+
+      <Button title="RSA-OAEP Encrypt & Decrypt" onPress={handleRSAOAEP} />
 
       <Text style={styles.resultText}>{result}</Text>
     </View>
