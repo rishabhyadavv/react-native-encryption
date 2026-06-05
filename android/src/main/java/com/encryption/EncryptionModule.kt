@@ -418,7 +418,8 @@ override fun getPublicRSAkey(privateKeyBase64: String): String {
 
         @Throws(Exception::class)
         override fun pbkdf2(password: String, salt: String, iterations: Double, keyLength: Double, hash: String): String {
-            val factory = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+            val algorithm = if (hash == "SHA-512") "PBKDF2WithHmacSHA512" else "PBKDF2WithHmacSHA256"
+            val factory = javax.crypto.SecretKeyFactory.getInstance(algorithm)
             val spec = javax.crypto.spec.PBEKeySpec(
                 password.toCharArray(),
                 salt.toByteArray(Charsets.UTF_8),

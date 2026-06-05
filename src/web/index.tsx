@@ -5,6 +5,9 @@ declare var crypto: any;
 declare var atob: (input: string) => string;
 declare var btoa: (input: string) => string;
 declare var TextEncoder: { new (): { encode(input: string): Uint8Array } };
+declare var TextDecoder: {
+  new (label?: string): { decode(input: ArrayBuffer): string };
+};
 
 export const generateAESKey = WebEncryption.generateAESKey;
 export const encryptAES = WebEncryption.encryptAES;
@@ -295,10 +298,5 @@ export async function decryptRSAOAEP(
     privateKey,
     encryptedData
   );
-  const bytes = new Uint8Array(decrypted);
-  let result = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    result += String.fromCharCode(bytes[i]!);
-  }
-  return result;
+  return new TextDecoder('utf-8').decode(decrypted);
 }
