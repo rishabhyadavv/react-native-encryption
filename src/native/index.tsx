@@ -72,6 +72,18 @@ export function getPublicRSAkey(privateRSAkey: string): string {
   return Encryption.getPublicRSAkey(privateRSAkey);
 }
 
+export function signDataRSA(data: string, key: string): string {
+  return Encryption.signDataRSA(data, key);
+}
+
+export function verifySignatureRSA(
+  data: string,
+  signatureBase64: string,
+  key: string
+): boolean {
+  return Encryption.verifySignatureRSA(data, signatureBase64, key);
+}
+
 export function generateECDSAKeyPair(): keypair {
   return Encryption.generateECDSAKeyPair();
 }

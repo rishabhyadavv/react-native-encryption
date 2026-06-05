@@ -8,9 +8,65 @@ import java.security.interfaces.ECPublicKey
 import java.math.BigInteger
 
 /**
- * SignatureUtils: Utility class for ECDSA Key Pair Management, Signing, and Verification.
+ * SignatureUtils: Utility class for ECDSA and RSA Key Pair Management, Signing, and Verification.
  */
 object SignatureUtils {
+
+    /**
+     * Signs data using an RSA private key with SHA256withRSA.
+     *
+     * @param data The plaintext data to sign.
+     * @param privateKeyBase64 The Base64-encoded RSA private key (PKCS#8).
+     * @return Base64-encoded digital signature.
+     */
+    @Throws(Exception::class)
+    fun signDataRSA(data: String, privateKeyBase64: String): String {
+        return try {
+            val privateKeyBytes = Base64.decode(privateKeyBase64, Base64.DEFAULT)
+            val keyFactory = KeyFactory.getInstance("RSA")
+            val privateKeySpec = PKCS8EncodedKeySpec(privateKeyBytes)
+            val privateKey = keyFactory.generatePrivate(privateKeySpec)
+
+            val signature = Signature.getInstance("SHA256withRSA")
+            signature.initSign(privateKey)
+            signature.update(data.toByteArray(Charsets.UTF_8))
+
+            val signedData = signature.sign()
+            Base64.encodeToString(signedData, Base64.NO_WRAP)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw Exception("Failed to sign data with RSA: ${e.localizedMessage}")
+        }
+    }
+
+    /**
+     * Verifies an RSA signature using the provided public key with SHA256withRSA.
+     *
+     * @param data The original plaintext data.
+     * @param signatureBase64 The Base64-encoded digital signature.
+     * @param publicKeyBase64 The Base64-encoded RSA public key (X.509).
+     * @return `true` if the signature is valid, `false` otherwise.
+     */
+    @Throws(Exception::class)
+    fun verifySignatureRSA(data: String, signatureBase64: String, publicKeyBase64: String): Boolean {
+        return try {
+            val publicKeyBytes = Base64.decode(publicKeyBase64, Base64.DEFAULT)
+            val keyFactory = KeyFactory.getInstance("RSA")
+            val publicKeySpec = X509EncodedKeySpec(publicKeyBytes)
+            val publicKey = keyFactory.generatePublic(publicKeySpec)
+
+            val signature = Signature.getInstance("SHA256withRSA")
+            signature.initVerify(publicKey)
+            signature.update(data.toByteArray(Charsets.UTF_8))
+
+            val signatureBytes = Base64.decode(signatureBase64, Base64.DEFAULT)
+            signature.verify(signatureBytes)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw Exception("Failed to verify RSA signature: ${e.localizedMessage}")
+        }
+    }
+
 
     /**
      * Generates an ECDSA (Elliptic Curve Digital Signature Algorithm) key pair.
