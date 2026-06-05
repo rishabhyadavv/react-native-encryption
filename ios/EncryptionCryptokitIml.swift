@@ -8,6 +8,7 @@
 import Foundation
 import CryptoKit
 import Security
+import CommonCrypto
 
 // MARK: - EncryptionError
 enum EncryptionError: LocalizedError {
